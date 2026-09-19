@@ -1,0 +1,27 @@
+{
+  "home": {
+    "title": "B2B Orders",
+    "tagline": "Multi-tenant B2B ordering platform - Phase 0 foundation.",
+    "signedInAs": "Signed in as {name}",
+    "notSignedIn": "Not signed in.",
+    "activeMembership": "Active membership: {description}",
+    "noMembership": "No active membership on this account.",
+    "signIn": "Sign in",
+    "signOut": "Sign out"
+  },
+  "membership": {
+    "platformAdmin": "Platform Admin",
+    "tenant": "Seller staff at tenant {tenantId} ({role})",
+    "customer": "Buyer at customer {customerId} ({role})"
+  },
+  "signIn": {
+    "title": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "error": "Invalid email or password."
+  },
+  "locale": {
+    "switchTo": "Switch to {locale}"
+  }
+}

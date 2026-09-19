@@ -1,0 +1,27 @@
+{
+  "home": {
+    "title": "B2B Нарачки",
+    "tagline": "Мулти-тенант платформа за B2B нарачки - основа за Фаза 0.",
+    "signedInAs": "Најавени сте како {name}",
+    "notSignedIn": "Не сте најавени.",
+    "activeMembership": "Активно членство: {description}",
+    "noMembership": "Нема активно членство на оваа сметка.",
+    "signIn": "Најава",
+    "signOut": "Одјава"
+  },
+  "membership": {
+    "platformAdmin": "Администратор на платформата",
+    "tenant": "Продавач кај тенант {tenantId} ({role})",
+    "customer": "Купувач кај клиент {customerId} ({role})"
+  },
+  "signIn": {
+    "title": "Најава",
+    "email": "Е-пошта",
+    "password": "Лозинка",
+    "submit": "Најава",
+    "error": "Погрешна е-пошта или лозинка."
+  },
+  "locale": {
+    "switchTo": "Смени на {locale}"
+  }
+}

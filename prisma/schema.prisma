@@ -1,0 +1,590 @@
+// Prisma schema for the B2B-Orders multi-tenant platform.
+// Source of truth for entity design: ../docs/DATABASE_DESIGN.md
+//
+// Naming convention: no @@map/@map is used anywhere in this file. Table names
+// equal model names (PascalCase, e.g. "Tenant") and column names equal field
+// names (camelCase, e.g. "tenantId"). Prisma always quotes these identifiers
+// in generated SQL, and every hand-written raw SQL statement in this project
+// (RLS policies, the tenant-context helper) quotes them the same way, e.g.
+// "tenantId". This was chosen over snake_case mapping to keep this file
+// shorter; see prisma/rls/README.md for the raw SQL conventions.
+//
+// Corrections made to the docs during implementation (see docs/DEVELOPMENT_PLAN.md
+// change history for the pointer back to this note):
+//   - Customer.defaultPriceListId was dropped. DATABASE_DESIGN.md listed it as a
+//     Customer field AND described CustomerPriceListAssignment as "modeled as a
+//     table (not a single FK on Customer)" in the same breath - a direct
+//     contradiction. The table wins, since its own rationale explains why a
+//     field would defeat the purpose.
+//   - The entity diagram's "CustomerDiscount" box was dropped; the detailed
+//     field list only ever defined discountPercent as a plain field on
+//     Customer, and MVP_SCOPE.md only ever asked for a single flat discount.
+//     A whole entity for one nullable percentage would be needless.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Connection URL moved to prisma.config.ts in Prisma 7 (schema-level
+// `datasource.url` was removed) - see that file's own comments.
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum CutOffEnforcement {
+  SOFT_WARNING
+  HARD_BLOCK
+}
+
+enum TenantRole {
+  SELLER_ADMIN
+  SALES_REP
+  WAREHOUSE_WORKER
+  DELIVERY_DRIVER
+}
+
+enum CustomerRole {
+  BUYER_ADMIN
+  BUYER_EMPLOYEE
+}
+
+enum ProductVisibility {
+  HIDDEN
+  VISIBLE
+}
+
+enum OrderStatus {
+  DRAFT
+  SUBMITTED
+  CONFIRMED
+  CANCELLED
+  PICKING
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+}
+
+enum CancelledBy {
+  BUYER
+  SELLER
+  SYSTEM
+}
+
+// Which "hat" an actor was wearing when an audited action happened. Relevant
+// because a single User can hold more than one membership (see docs/DATABASE_DESIGN.md §4).
+enum ActingContext {
+  TENANT
+  CUSTOMER
+  PLATFORM_ADMIN
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+// Global login identity. One row per person, independent of how many tenants
+// or customers they have access to - see TenantMembership / CustomerMembership.
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  passwordHash    String
+  name            String
+  locale          String   @default("mk")
+  isPlatformAdmin Boolean  @default(false)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenantMemberships   TenantMembership[]
+  customerMemberships CustomerMembership[]
+  placedOrders        Order[]              @relation("OrderPlacedBy")
+  favoriteListsCreated FavoriteList[]
+  auditLogEntries     AuditLogEntry[]
+  sessions            Session[]
+  accounts            Account[]
+}
+
+// A Seller-side access grant: this User can act as `role` within `tenant`.
+model TenantMembership {
+  id        String     @id @default(uuid())
+  userId    String
+  tenantId  String
+  role      TenantRole
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([tenantId, isActive])
+}
+
+// A Buyer-side access grant: this User can act as `role` within `customer`.
+// tenantId is denormalized from customer.tenantId (see docs/DATABASE_DESIGN.md §5)
+// specifically so RLS policies and tenant-scoped queries can filter on a
+// column that lives directly on this row, without joining through Customer.
+model CustomerMembership {
+  id         String       @id @default(uuid())
+  userId     String
+  customerId String
+  tenantId   String
+  role       CustomerRole
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, customerId])
+  @@index([tenantId, customerId, isActive])
+}
+
+// Auth.js database-session models (Prisma adapter's expected shape).
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Auth.js account-linking table (kept for future OAuth/SSO providers even
+// though MVP only uses the credentials provider - see docs/ARCHITECTURE.md).
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// ---------------------------------------------------------------------------
+// Tenant (Seller company)
+// ---------------------------------------------------------------------------
+
+model Tenant {
+  id       String       @id @default(uuid())
+  name     String
+  slug     String       @unique
+  status   TenantStatus @default(ACTIVE)
+
+  defaultCurrency   String            @default("MKD")
+  defaultVatRate    Decimal           @db.Decimal(5, 2)
+  cutOffTime        String? // e.g. "14:00"; MVP only ever shows a warning, never blocks
+  cutOffEnforcement CutOffEnforcement @default(SOFT_WARNING)
+  locale            String            @default("mk")
+
+  // Unused in MVP; placeholders so a future billing layer doesn't need a migration.
+  subscriptionPlan   String?
+  subscriptionStatus String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenantMemberships   TenantMembership[]
+  customerMemberships CustomerMembership[]
+  categories          Category[]
+  unitsOfMeasure      UnitOfMeasure[]
+  products            Product[]
+  productUnits        ProductUnit[]
+  priceLists          PriceList[]
+  customers           Customer[]
+  customerAddresses   CustomerAddress[]
+  deliveryRoutes      DeliveryRoute[]
+  orders              Order[]
+  auditLogEntries     AuditLogEntry[]
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+model Category {
+  id               String   @id @default(uuid())
+  tenantId         String
+  name             String
+  parentCategoryId String?
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryParent", fields: [parentCategoryId], references: [id])
+  children Category[] @relation("CategoryParent")
+  products Product[]
+
+  @@index([tenantId])
+}
+
+// Tenant-level catalog of unit types (piece, box, kg, ...). Reused across
+// ProductUnit rows - not tied to a single product.
+model UnitOfMeasure {
+  id        String   @id @default(uuid())
+  tenantId  String
+  code      String // e.g. "pc", "box", "kg"
+  label     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productUnits ProductUnit[]
+
+  @@unique([tenantId, code])
+}
+
+model Product {
+  id       String  @id @default(uuid())
+  tenantId String
+  categoryId String?
+  name        String
+  description String?
+  imageUrl    String?
+  // Falls back to Tenant.defaultVatRate when null - see docs/DATABASE_DESIGN.md §3.
+  defaultVatRate Decimal? @db.Decimal(5, 2)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant                    Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category                  Category?                    @relation(fields: [categoryId], references: [id])
+  units                     ProductUnit[]
+  customerProductVisibility CustomerProductVisibility[]
+
+  @@index([tenantId, categoryId])
+}
+
+// A sellable packaging/unit option for a Product (e.g. "piece", "box of 12").
+// Every Product has at least one; nothing in this schema assumes only one.
+model ProductUnit {
+  id              String   @id @default(uuid())
+  tenantId        String
+  productId       String
+  unitOfMeasureId String
+  sku             String
+  label           String // e.g. "Box of 12", "1kg bag"
+  // For future stock/reporting use; not used by MVP order/pricing logic.
+  conversionFactorToBase Decimal? @db.Decimal(12, 4)
+  minOrderQty            Decimal  @db.Decimal(12, 3) @default(1)
+  orderIncrement          Decimal  @db.Decimal(12, 3) @default(1)
+  isDefault               Boolean  @default(true)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product       Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  unitOfMeasure UnitOfMeasure      @relation(fields: [unitOfMeasureId], references: [id])
+  priceListItems PriceListItem[]
+  favoriteItems  FavoriteListItem[]
+  orderLines     OrderLine[]
+
+  @@unique([tenantId, sku])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// Pricing
+// ---------------------------------------------------------------------------
+
+model PriceList {
+  id        String   @id @default(uuid())
+  tenantId  String
+  name      String
+  currency  String   @default("MKD")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant                       Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items                        PriceListItem[]
+  customerPriceListAssignments CustomerPriceListAssignment[]
+
+  @@index([tenantId])
+}
+
+// Pricing is per packaging option, not per product: a box and a single piece
+// of the same product legitimately have different, non-linearly-related prices.
+model PriceListItem {
+  id            String   @id @default(uuid())
+  priceListId   String
+  productUnitId String
+  price         Decimal  @db.Decimal(12, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  priceList   PriceList   @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  productUnit ProductUnit @relation(fields: [productUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([priceListId, productUnitId])
+}
+
+// ---------------------------------------------------------------------------
+// Customer (Buyer company)
+// ---------------------------------------------------------------------------
+
+model Customer {
+  id       String  @id @default(uuid())
+  tenantId String
+  name     String
+  taxId    String? // ЕДБ
+
+  discountPercent     Decimal? @db.Decimal(5, 2)
+  // Stored, never enforced in MVP - see docs/MVP_SCOPE.md.
+  creditLimit         Decimal? @db.Decimal(14, 2)
+  paymentTermsDays    Int?
+  allowedDeliveryDays Int[] // weekday mask, e.g. [1,2,3,4,5]
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant                     Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships                CustomerMembership[]
+  addresses                  CustomerAddress[]
+  priceListAssignment        CustomerPriceListAssignment?
+  productVisibilities        CustomerProductVisibility[]
+  favoriteLists               FavoriteList[]
+  orders                      Order[]
+
+  @@index([tenantId])
+}
+
+model CustomerAddress {
+  id         String  @id @default(uuid())
+  customerId String
+  tenantId   String // denormalized, see docs/DATABASE_DESIGN.md §5
+  label      String // e.g. "Main warehouse", "Downtown branch"
+
+  recipientName String
+  addressLine1  String
+  addressLine2  String?
+  city          String
+  postalCode    String?
+  country       String @default("MK")
+
+  isDefaultDelivery Boolean @default(false)
+  isDefaultBilling  Boolean @default(false)
+  isActive          Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders   Order[]
+
+  @@index([customerId, isActive])
+}
+
+// MVP: exactly one assignment per customer (@@unique([customerId])). Modeled
+// as its own table, not a FK on Customer, so Phase 2 can add time-bound /
+// multiple assignments by relaxing this constraint rather than migrating a
+// column - see docs/DATABASE_DESIGN.md §3.
+model CustomerPriceListAssignment {
+  id            String    @id @default(uuid())
+  customerId    String    @unique
+  priceListId   String
+  effectiveFrom DateTime? // unused in MVP
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  customer  Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+}
+
+// Visibility stays product-level (not per-packaging). Absence of a row means
+// visible by default - only exceptions are stored.
+model CustomerProductVisibility {
+  id         String            @id @default(uuid())
+  customerId String
+  productId  String
+  visibility ProductVisibility
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productId])
+}
+
+model FavoriteList {
+  id              String   @id @default(uuid())
+  customerId      String
+  createdByUserId String
+  name            String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customer      Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdByUser User               @relation(fields: [createdByUserId], references: [id])
+  items         FavoriteListItem[]
+
+  @@index([customerId])
+}
+
+model FavoriteListItem {
+  id             String   @id @default(uuid())
+  favoriteListId String
+  productUnitId  String
+  defaultQty     Decimal? @db.Decimal(12, 3)
+  createdAt      DateTime @default(now())
+
+  favoriteList FavoriteList @relation(fields: [favoriteListId], references: [id], onDelete: Cascade)
+  productUnit  ProductUnit  @relation(fields: [productUnitId], references: [id], onDelete: Cascade)
+
+  @@unique([favoriteListId, productUnitId])
+}
+
+// ---------------------------------------------------------------------------
+// Delivery
+// ---------------------------------------------------------------------------
+
+// Placeholder table for Phase 2 route planning - see docs/DATABASE_DESIGN.md.
+model DeliveryRoute {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  deliveryDays Int[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+model Order {
+  id         String      @id @default(uuid())
+  tenantId   String
+  customerId String
+  // Per-tenant human-readable sequence. Generation logic (allocating the next
+  // number per tenant) is Phase 2/3 domain logic, out of scope for Phase 0.
+  orderNumber Int
+  status      OrderStatus @default(DRAFT)
+
+  placedByUserId String
+  placedByName   String // snapshot - see docs/DATABASE_DESIGN.md §6
+  placedByRole   String // snapshot
+
+  deliveryAddressId       String?
+  // JSON snapshot of the address at submission time - see docs/DATABASE_DESIGN.md §6.
+  // Structure: { recipientName, addressLine1, addressLine2, city, postalCode, country }
+  deliveryAddressSnapshot Json?
+
+  requestedDeliveryDate DateTime?
+  cutOffWarningShown    Boolean   @default(false)
+  note                  String?
+
+  cancelledBy  CancelledBy?
+  cancelReason String?
+
+  deliveredWithIssues     Boolean @default(false)
+  deliveredWithIssuesNote String?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  submittedAt  DateTime?
+  confirmedAt  DateTime?
+  deliveredAt  DateTime?
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  placedByUser    User             @relation("OrderPlacedBy", fields: [placedByUserId], references: [id])
+  deliveryAddress CustomerAddress? @relation(fields: [deliveryAddressId], references: [id], onDelete: SetNull)
+  lines           OrderLine[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId, status])
+  @@index([tenantId, customerId])
+}
+
+// Intentionally has no tenantId column of its own - it is scoped via its
+// parent Order (see docs/DATABASE_DESIGN.md §3, "OrderLine (via Order)").
+// The RLS policy for this table filters through orders - see prisma/rls/policies.sql.
+model OrderLine {
+  id            String  @id @default(uuid())
+  orderId       String
+  productUnitId String?
+
+  // Snapshots - never re-derived from live catalog data once written.
+  productNameSnapshot String
+  productSkuSnapshot  String
+  unitLabelSnapshot   String
+
+  requestedQty Decimal @db.Decimal(12, 3)
+  confirmedQty Decimal? @db.Decimal(12, 3)
+  deliveredQty Decimal? @db.Decimal(12, 3)
+
+  unavailableReason String?
+
+  unitPriceAtOrderTime       Decimal  @db.Decimal(12, 2)
+  discountPercentAtOrderTime Decimal? @db.Decimal(5, 2)
+  vatRateAtOrderTime         Decimal  @db.Decimal(5, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productUnit ProductUnit? @relation(fields: [productUnitId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+// Append-only by convention: application code never updates or deletes a row
+// here. Every seller-side adjustment to a submitted order (quantity change,
+// marking a line unavailable, cancellation) must write one of these - see
+// docs/SECURITY_AND_MULTI_TENANCY.md §7 and docs/ORDER_WORKFLOW.md §4.
+model AuditLogEntry {
+  id             String        @id @default(uuid())
+  tenantId       String
+  actorUserId    String? // null for SYSTEM-initiated actions
+  actingContext  ActingContext
+  entityType     String
+  entityId       String
+  action         String
+  fieldName      String? // set for granular field-level changes (e.g. "confirmedQty")
+  oldValue       String?
+  newValue       String?
+  reason         String?
+  createdAt      DateTime      @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorUserId], references: [id])
+
+  @@index([tenantId, entityType, entityId])
+  @@index([tenantId, createdAt])
+}
