@@ -225,11 +225,20 @@ model Tenant {
 // ---------------------------------------------------------------------------
 
 model Category {
-  id               String   @id @default(uuid())
-  tenantId         String
-  name             String
+  id       String @id @default(uuid())
+  tenantId String
+
+  // MK/EN split per locked Phase 1A requirement - not a general i18n
+  // mechanism, just the two locales this whole project supports
+  // (docs/PRODUCT_REQUIREMENTS.md §5). A JSON/translations-table approach
+  // would be overkill for exactly two fixed locales.
+  nameMk String
+  nameEn String
+
+  description      String?
   parentCategoryId String?
   sortOrder        Int      @default(0)
+  isActive         Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -244,10 +253,14 @@ model Category {
 // Tenant-level catalog of unit types (piece, box, kg, ...). Reused across
 // ProductUnit rows - not tied to a single product.
 model UnitOfMeasure {
-  id        String   @id @default(uuid())
-  tenantId  String
-  code      String // e.g. "pc", "box", "kg"
-  label     String
+  id       String @id @default(uuid())
+  tenantId String
+  code     String // e.g. "pc", "box", "kg"
+
+  labelMk String
+  labelEn String
+
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -258,12 +271,21 @@ model UnitOfMeasure {
 }
 
 model Product {
-  id       String  @id @default(uuid())
-  tenantId String
+  id         String  @id @default(uuid())
+  tenantId   String
   categoryId String?
-  name        String
+
+  nameMk String
+  nameEn String
+
+  // The base product's own code, distinct from ProductUnit.sku (each
+  // packaging variant has its own SKU) - e.g. one product "sku" identifies
+  // the item, each ProductUnit "sku" identifies a specific sellable
+  // packaging of it.
+  sku         String
   description String?
-  imageUrl    String?
+  barcode     String? // EAN/UPC, optional
+  imageUrl    String? // placeholder field only - no upload pipeline yet, see docs/MVP_SCOPE.md
   // Falls back to Tenant.defaultVatRate when null - see docs/DATABASE_DESIGN.md §3.
   defaultVatRate Decimal? @db.Decimal(5, 2)
   isActive       Boolean  @default(true)
@@ -275,11 +297,14 @@ model Product {
   units                     ProductUnit[]
   customerProductVisibility CustomerProductVisibility[]
 
+  @@unique([tenantId, sku])
   @@index([tenantId, categoryId])
 }
 
 // A sellable packaging/unit option for a Product (e.g. "piece", "box of 12").
 // Every Product has at least one; nothing in this schema assumes only one.
+// Deliberately has no price field - pricing lives entirely in
+// PriceList/PriceListItem (docs/DATABASE_DESIGN.md §3), never here.
 model ProductUnit {
   id              String   @id @default(uuid())
   tenantId        String
@@ -287,14 +312,15 @@ model ProductUnit {
   unitOfMeasureId String
   sku             String
   label           String // e.g. "Box of 12", "1kg bag"
+  barcode         String? // EAN/UPC for this specific packaging, optional
   // For future stock/reporting use; not used by MVP order/pricing logic.
   conversionFactorToBase Decimal? @db.Decimal(12, 4)
   minOrderQty            Decimal  @db.Decimal(12, 3) @default(1)
-  orderIncrement          Decimal  @db.Decimal(12, 3) @default(1)
-  isDefault               Boolean  @default(true)
-  isActive                Boolean  @default(true)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
+  orderIncrement         Decimal  @db.Decimal(12, 3) @default(1)
+  isDefault              Boolean  @default(true)
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product       Product            @relation(fields: [productId], references: [id], onDelete: Cascade)

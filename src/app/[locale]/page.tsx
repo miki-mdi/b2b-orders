@@ -25,6 +25,11 @@ export default async function HomePage() {
           <>
             <p>{t("signedInAs", { name: session.user.name })}</p>
             <p>{membershipDescription ?? t("noMembership")}</p>
+            {session.user.activeMembership?.type === "TENANT" && (
+              <Link href="/seller" className="underline underline-offset-2">
+                {t("sellerAdmin")}
+              </Link>
+            )}
             <form
               action={async () => {
                 "use server";

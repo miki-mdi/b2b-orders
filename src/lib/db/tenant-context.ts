@@ -42,6 +42,13 @@ export function requireCustomerId(customerId: string | null | undefined): string
   return customerId;
 }
 
+export function requireUserId(userId: string | null | undefined): string {
+  if (!userId) {
+    throw new UserContextMissingError();
+  }
+  return userId;
+}
+
 export class TenantContextMissingError extends Error {
   constructor() {
     super(
@@ -59,5 +66,15 @@ export class CustomerContextMissingError extends Error {
         "This is a fail-safe: no buyer-facing query may run without an explicit customerId."
     );
     this.name = "CustomerContextMissingError";
+  }
+}
+
+export class UserContextMissingError extends Error {
+  constructor() {
+    super(
+      "User context is required for this operation but was not provided. " +
+        "This is a fail-safe: no membership-discovery query may run without an explicit userId."
+    );
+    this.name = "UserContextMissingError";
   }
 }

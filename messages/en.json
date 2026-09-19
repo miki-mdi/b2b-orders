@@ -7,7 +7,8 @@
     "activeMembership": "Active membership: {description}",
     "noMembership": "No active membership on this account.",
     "signIn": "Sign in",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "sellerAdmin": "Seller admin"
   },
   "membership": {
     "platformAdmin": "Platform Admin",
@@ -23,5 +24,100 @@
   },
   "locale": {
     "switchTo": "Switch to {locale}"
+  },
+  "seller": {
+    "nav": {
+      "title": "Seller Admin",
+      "dashboard": "Dashboard",
+      "categories": "Categories",
+      "units": "Units of Measure",
+      "products": "Products",
+      "backToSite": "Back to site"
+    },
+    "dashboard": {
+      "title": "Catalog",
+      "intro": "Manage the categories, units of measure and products your customers will see.",
+      "categoriesCard": "Categories",
+      "unitsCard": "Units of Measure",
+      "productsCard": "Products"
+    },
+    "common": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "save": "Save",
+      "addNew": "Add new",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "backToList": "Back to list",
+      "actions": "Actions",
+      "status": "Status",
+      "loading": "Loading…"
+    },
+    "categories": {
+      "title": "Categories",
+      "empty": "No categories yet. Create your first one to start organizing products.",
+      "newTitle": "New category",
+      "editTitle": "Edit category",
+      "nameMk": "Name (Macedonian)",
+      "nameEn": "Name (English)",
+      "description": "Description",
+      "sortOrder": "Sort order",
+      "columnName": "Name",
+      "columnSortOrder": "Sort order"
+    },
+    "units": {
+      "title": "Units of Measure",
+      "empty": "No units of measure yet. Create your first one (e.g. piece, box, kg).",
+      "newTitle": "New unit of measure",
+      "editTitle": "Edit unit of measure",
+      "code": "Code",
+      "labelMk": "Label (Macedonian)",
+      "labelEn": "Label (English)",
+      "columnCode": "Code",
+      "columnLabel": "Label"
+    },
+    "products": {
+      "title": "Products",
+      "empty": "No products yet. Create your first product to start building your catalog.",
+      "newTitle": "New product",
+      "editTitle": "Edit product",
+      "nameMk": "Name (Macedonian)",
+      "nameEn": "Name (English)",
+      "sku": "SKU",
+      "category": "Category",
+      "selectCategory": "Select a category",
+      "description": "Description",
+      "barcode": "Barcode / EAN",
+      "imageUrl": "Image URL",
+      "vatRate": "VAT rate (%)",
+      "vatRateHint": "Leave blank to use the tenant's default rate",
+      "columnName": "Name",
+      "columnSku": "SKU",
+      "columnCategory": "Category",
+      "noCategoriesWarning": "You need at least one active category before you can create a product."
+    },
+    "productUnits": {
+      "title": "Packaging / units",
+      "empty": "No packaging options yet. Add at least one so this product can be ordered.",
+      "newTitle": "Add packaging option",
+      "editTitle": "Edit packaging option",
+      "unitOfMeasure": "Unit of measure",
+      "selectUnit": "Select a unit",
+      "sku": "SKU",
+      "label": "Label",
+      "labelHint": "e.g. \"Box of 12\", \"1kg bag\"",
+      "barcode": "Barcode / EAN",
+      "conversionFactor": "Conversion factor to base unit",
+      "minOrderQty": "Minimum order quantity",
+      "orderIncrement": "Order increment",
+      "isDefault": "Default packaging for this product",
+      "columnSku": "SKU",
+      "columnLabel": "Label",
+      "columnUnit": "Unit",
+      "columnMinQty": "Min qty",
+      "columnIncrement": "Increment",
+      "noUnitsWarning": "You need at least one active unit of measure before you can add packaging options."
+    }
   }
 }

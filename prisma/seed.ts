@@ -72,12 +72,20 @@ export async function seedTenant(label: string, slug: string, passwordHash: stri
       data: { userId: sellerAdmin.id, tenantId: tenant.id, role: "SELLER_ADMIN" },
     });
 
-    const category = await tx.category.create({ data: { name: "General", tenantId: tenant.id } });
+    const category = await tx.category.create({
+      data: { tenantId: tenant.id, nameMk: "Општо", nameEn: "General" },
+    });
     const unit = await tx.unitOfMeasure.create({
-      data: { tenantId: tenant.id, code: "pc", label: "Piece" },
+      data: { tenantId: tenant.id, code: "pc", labelMk: "Парче", labelEn: "Piece" },
     });
     const product = await tx.product.create({
-      data: { tenantId: tenant.id, categoryId: category.id, name: `${label} Widget` },
+      data: {
+        tenantId: tenant.id,
+        categoryId: category.id,
+        nameMk: `${label} Виџет`,
+        nameEn: `${label} Widget`,
+        sku: `${slug.toUpperCase()}-WIDGET`,
+      },
     });
     const productUnit = await tx.productUnit.create({
       data: {
@@ -147,7 +155,7 @@ export async function seedTenant(label: string, slug: string, passwordHash: stri
           create: [
             {
               productUnitId: catalog.productUnit.id,
-              productNameSnapshot: catalog.product.name,
+              productNameSnapshot: catalog.product.nameEn,
               productSkuSnapshot: catalog.productUnit.sku,
               unitLabelSnapshot: catalog.productUnit.label,
               requestedQty: 5,

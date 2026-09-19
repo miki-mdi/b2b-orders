@@ -45,6 +45,23 @@
 -- (never conditionally skipped), so it can never be observed in this
 -- "previously-set-now-stale" state.
 --
+-- A third session variable, app.current_user_id, exists ONLY for the
+-- membership-discovery step of authentication (resolveActiveMembership in
+-- src/lib/auth/active-membership.ts, via src/lib/db/with-user-context.ts) -
+-- the one legitimate case where code needs to answer "which tenant(s)/
+-- customer(s) does this user belong to" BEFORE any tenant/customer context
+-- is known, so the normal app.current_tenant_id-gated policies can't apply
+-- yet. TenantMembership and CustomerMembership each get a SEPARATE SELECT
+-- policy allowing `"userId" = current_user_id` as an alternative to the
+-- normal tenant/customer match - readable proof that a user can only ever
+-- discover their OWN membership rows this way, never anyone else's. This is
+-- deliberately SELECT-only: the INSERT/UPDATE/DELETE policies on both
+-- tables are unchanged and still require the ordinary privileged tenant
+-- context - identity alone (app.current_user_id) can never create, modify,
+-- or delete a membership. See docs/SECURITY_AND_MULTI_TENANCY.md for the
+-- full write-up of why this was needed (RLS-protected membership tables are
+-- exactly what login must read before a tenant is known).
+--
 -- FORCE ROW LEVEL SECURITY matters here specifically because the app
 -- connects as a dedicated low-privilege role (see prisma/rls/README.md) that
 -- does NOT own these tables - RLS already applies to non-owners by default.
@@ -59,9 +76,31 @@
 
 ALTER TABLE "TenantMembership" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "TenantMembership" FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON "TenantMembership"
+
+-- Read: normal tenant match, OR the row is the querying user's own
+-- membership (the login-discovery exemption - see the header comment above).
+CREATE POLICY tenant_isolation_select ON "TenantMembership"
+  FOR SELECT
+  USING (
+    "tenantId" = current_setting('app.current_tenant_id', true)
+    OR "userId" = NULLIF(current_setting('app.current_user_id', true), '')
+  );
+
+-- Write: tenant match only. app.current_user_id is never consulted here -
+-- a user's own identity is never sufficient to create/modify/delete a
+-- membership, only an active tenant (admin) context is.
+CREATE POLICY tenant_isolation_insert ON "TenantMembership"
+  FOR INSERT
+  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY tenant_isolation_update ON "TenantMembership"
+  FOR UPDATE
   USING ("tenantId" = current_setting('app.current_tenant_id', true))
   WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY tenant_isolation_delete ON "TenantMembership"
+  FOR DELETE
+  USING ("tenantId" = current_setting('app.current_tenant_id', true));
 
 ALTER TABLE "Category" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Category" FORCE ROW LEVEL SECURITY;
@@ -183,7 +222,35 @@ CREATE POLICY tenant_isolation ON "Customer"
 
 ALTER TABLE "CustomerMembership" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "CustomerMembership" FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON "CustomerMembership"
+
+-- Read: normal tenant+customer match, OR the row is the querying user's own
+-- membership (the login-discovery exemption - see the header comment above).
+CREATE POLICY tenant_isolation_select ON "CustomerMembership"
+  FOR SELECT
+  USING (
+    (
+      "tenantId" = current_setting('app.current_tenant_id', true)
+      AND (
+        NULLIF(current_setting('app.current_customer_id', true), '') IS NULL
+        OR "customerId" = current_setting('app.current_customer_id', true)
+      )
+    )
+    OR "userId" = NULLIF(current_setting('app.current_user_id', true), '')
+  );
+
+-- Write: tenant+customer match only, same reasoning as TenantMembership above.
+CREATE POLICY tenant_isolation_insert ON "CustomerMembership"
+  FOR INSERT
+  WITH CHECK (
+    "tenantId" = current_setting('app.current_tenant_id', true)
+    AND (
+      NULLIF(current_setting('app.current_customer_id', true), '') IS NULL
+      OR "customerId" = current_setting('app.current_customer_id', true)
+    )
+  );
+
+CREATE POLICY tenant_isolation_update ON "CustomerMembership"
+  FOR UPDATE
   USING (
     "tenantId" = current_setting('app.current_tenant_id', true)
     AND (
@@ -192,6 +259,16 @@ CREATE POLICY tenant_isolation ON "CustomerMembership"
     )
   )
   WITH CHECK (
+    "tenantId" = current_setting('app.current_tenant_id', true)
+    AND (
+      NULLIF(current_setting('app.current_customer_id', true), '') IS NULL
+      OR "customerId" = current_setting('app.current_customer_id', true)
+    )
+  );
+
+CREATE POLICY tenant_isolation_delete ON "CustomerMembership"
+  FOR DELETE
+  USING (
     "tenantId" = current_setting('app.current_tenant_id', true)
     AND (
       NULLIF(current_setting('app.current_customer_id', true), '') IS NULL
