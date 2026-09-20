@@ -53,7 +53,20 @@ export default async function SellerLayout({ children }: { children: React.React
           {t("backToSite")}
         </Link>
       </nav>
-      <main className="flex-1 p-4 md:p-8">{children}</main>
+      {/*
+        min-w-0 overrides the flex item default of min-width: auto (which
+        resolves to the item's min-content size). Without it, a wide child
+        - e.g. the Imports wizard's min-w-[640px] results table - forces
+        `main` wider than the space `md:flex-row` actually gives it once the
+        sidebar takes its 224px, pushing the whole row layout past the
+        viewport instead of letting the table's own overflow-x-auto scroll
+        internally. Found via manual review after a reported visual overlap
+        at 768px (Phase 1F-A) - confirmed via computed layout that
+        scrollWidth > clientWidth only at this breakpoint, not at mobile
+        (flex-col, width is the cross axis, unaffected) or desktop (enough
+        room that the table's min-width never has to be forced).
+      */}
+      <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
     </div>
   );
 }
