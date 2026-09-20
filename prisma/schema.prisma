@@ -235,6 +235,14 @@ model Category {
   nameMk String
   nameEn String
 
+  // Stable, translation-independent business key (Phase 1F-A) - added
+  // specifically so CSV import has something durable to match a row against
+  // other than a display name that differs by locale. Nullable like
+  // Customer.code/PriceList.code: existing categories created before this
+  // field existed simply have no code until a seller sets one (manually or
+  // via an import CREATE), matching that same precedent.
+  code String?
+
   description      String?
   parentCategoryId String?
   sortOrder        Int      @default(0)
@@ -247,6 +255,7 @@ model Category {
   children Category[] @relation("CategoryParent")
   products Product[]
 
+  @@unique([tenantId, code])
   @@index([tenantId])
 }
 
@@ -435,6 +444,12 @@ model CustomerAddress {
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   orders   Order[]
 
+  // Formalizes what `label` already means in practice (a per-customer
+  // human-readable address identifier, e.g. "Main warehouse") into a real
+  // uniqueness constraint - Phase 1F-A uses (customerId, label) as the CSV
+  // import key for addresses, per the brief's "label/code if cleanly
+  // supported" guidance. No new column: `label` was always meant to be this.
+  @@unique([customerId, label])
   @@index([customerId, isActive])
 }
 

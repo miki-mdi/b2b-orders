@@ -2,6 +2,7 @@ import type { CustomerAddressInput } from "@/lib/validation/customers";
 import type { ScopedTransactionClient } from "@/lib/db/scoped-client";
 import { withCustomerContext, withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
+import { DuplicateValueError, isUniqueConstraintError } from "@/lib/domain/shared/errors";
 
 export class CustomerNotFoundError extends Error {}
 
@@ -75,37 +76,97 @@ async function clearOtherDefaults(
   });
 }
 
+/** Tx-scoped core, reused by CSV import (Phase 1F-A) - see category-service.ts's createCategoryInTx comment. */
+export async function createCustomerAddressInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  customerId: string,
+  input: CustomerAddressInput,
+  reason?: string
+) {
+  await assertCustomerBelongsToTenant(tx, customerId);
+
+  let address;
+  try {
+    address = await tx.customerAddress.create({
+      data: { tenantId, customerId, ...toData(input) },
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("label", "This customer already has an address with this label.");
+    }
+    throw error;
+  }
+
+  if (input.isDefaultDelivery) {
+    await clearOtherDefaults(tx, customerId, address.id, "isDefaultDelivery");
+  }
+  if (input.isDefaultBilling) {
+    await clearOtherDefaults(tx, customerId, address.id, "isDefaultBilling");
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "CustomerAddress",
+    entityId: address.id,
+    action: "CREATE",
+    newValue: address,
+    reason,
+  });
+  return address;
+}
+
 export async function createCustomerAddress(
   tenantId: string,
   actorUserId: string,
   customerId: string,
   input: CustomerAddressInput
 ) {
-  return withTenantContext(tenantId, async (tx) => {
-    await assertCustomerBelongsToTenant(tx, customerId);
+  return withTenantContext(tenantId, (tx) => createCustomerAddressInTx(tx, tenantId, actorUserId, customerId, input));
+}
 
-    const address = await tx.customerAddress.create({
-      data: { tenantId, customerId, ...toData(input) },
-    });
-
-    if (input.isDefaultDelivery) {
-      await clearOtherDefaults(tx, customerId, address.id, "isDefaultDelivery");
+/** Tx-scoped core, reused by CSV import (Phase 1F-A). */
+export async function updateCustomerAddressInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  id: string,
+  input: CustomerAddressInput,
+  reason?: string
+) {
+  const before = await tx.customerAddress.findUniqueOrThrow({ where: { id } });
+  let after;
+  try {
+    after = await tx.customerAddress.update({ where: { id }, data: toData(input) });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("label", "This customer already has an address with this label.");
     }
-    if (input.isDefaultBilling) {
-      await clearOtherDefaults(tx, customerId, address.id, "isDefaultBilling");
-    }
+    throw error;
+  }
 
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "CustomerAddress",
-      entityId: address.id,
-      action: "CREATE",
-      newValue: address,
-    });
-    return address;
+  if (input.isDefaultDelivery) {
+    await clearOtherDefaults(tx, before.customerId, id, "isDefaultDelivery");
+  }
+  if (input.isDefaultBilling) {
+    await clearOtherDefaults(tx, before.customerId, id, "isDefaultBilling");
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "CustomerAddress",
+    entityId: id,
+    action: "UPDATE",
+    oldValue: before,
+    newValue: after,
+    reason,
   });
+  return after;
 }
 
 export async function updateCustomerAddress(
@@ -114,29 +175,7 @@ export async function updateCustomerAddress(
   id: string,
   input: CustomerAddressInput
 ) {
-  return withTenantContext(tenantId, async (tx) => {
-    const before = await tx.customerAddress.findUniqueOrThrow({ where: { id } });
-    const after = await tx.customerAddress.update({ where: { id }, data: toData(input) });
-
-    if (input.isDefaultDelivery) {
-      await clearOtherDefaults(tx, before.customerId, id, "isDefaultDelivery");
-    }
-    if (input.isDefaultBilling) {
-      await clearOtherDefaults(tx, before.customerId, id, "isDefaultBilling");
-    }
-
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "CustomerAddress",
-      entityId: id,
-      action: "UPDATE",
-      oldValue: before,
-      newValue: after,
-    });
-    return after;
-  });
+  return withTenantContext(tenantId, (tx) => updateCustomerAddressInTx(tx, tenantId, actorUserId, id, input));
 }
 
 export async function setCustomerAddressActive(

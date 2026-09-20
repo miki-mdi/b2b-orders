@@ -60,86 +60,107 @@ async function assertCategoryBelongsToTenant(tx: ScopedTransactionClient, catego
   }
 }
 
-export async function createProduct(tenantId: string, actorUserId: string, input: ProductInput) {
-  return withTenantContext(tenantId, async (tx) => {
-    await assertCategoryBelongsToTenant(tx, input.categoryId);
+/** Tx-scoped core, reused by CSV import (Phase 1F-A) - see category-service.ts's createCategoryInTx comment. */
+export async function createProductInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  input: ProductInput,
+  reason?: string
+) {
+  await assertCategoryBelongsToTenant(tx, input.categoryId);
 
-    let product;
-    try {
-      product = await tx.product.create({
-        data: {
-          tenantId,
-          categoryId: input.categoryId,
-          nameMk: input.nameMk,
-          nameEn: input.nameEn,
-          sku: input.sku,
-          description: input.description ?? null,
-          barcode: input.barcode ?? null,
-          imageUrl: input.imageUrl ?? null,
-          defaultVatRate: input.defaultVatRate ?? null,
-          isActive: input.isActive,
-        },
-      });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("sku", "This SKU is already used by another product.");
-      }
-      throw error;
-    }
-
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "Product",
-      entityId: product.id,
-      action: "CREATE",
-      newValue: product,
+  let product;
+  try {
+    product = await tx.product.create({
+      data: {
+        tenantId,
+        categoryId: input.categoryId,
+        nameMk: input.nameMk,
+        nameEn: input.nameEn,
+        sku: input.sku,
+        description: input.description ?? null,
+        barcode: input.barcode ?? null,
+        imageUrl: input.imageUrl ?? null,
+        defaultVatRate: input.defaultVatRate ?? null,
+        isActive: input.isActive,
+      },
     });
-    return product;
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("sku", "This SKU is already used by another product.");
+    }
+    throw error;
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "Product",
+    entityId: product.id,
+    action: "CREATE",
+    newValue: product,
+    reason,
   });
+  return product;
+}
+
+export async function createProduct(tenantId: string, actorUserId: string, input: ProductInput) {
+  return withTenantContext(tenantId, (tx) => createProductInTx(tx, tenantId, actorUserId, input));
+}
+
+/** Tx-scoped core, reused by CSV import (Phase 1F-A). */
+export async function updateProductInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  id: string,
+  input: ProductInput,
+  reason?: string
+) {
+  await assertCategoryBelongsToTenant(tx, input.categoryId);
+
+  const before = await tx.product.findUniqueOrThrow({ where: { id } });
+  let after;
+  try {
+    after = await tx.product.update({
+      where: { id },
+      data: {
+        categoryId: input.categoryId,
+        nameMk: input.nameMk,
+        nameEn: input.nameEn,
+        sku: input.sku,
+        description: input.description ?? null,
+        barcode: input.barcode ?? null,
+        imageUrl: input.imageUrl ?? null,
+        defaultVatRate: input.defaultVatRate ?? null,
+        isActive: input.isActive,
+      },
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("sku", "This SKU is already used by another product.");
+    }
+    throw error;
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "Product",
+    entityId: id,
+    action: "UPDATE",
+    oldValue: before,
+    newValue: after,
+    reason,
+  });
+  return after;
 }
 
 export async function updateProduct(tenantId: string, actorUserId: string, id: string, input: ProductInput) {
-  return withTenantContext(tenantId, async (tx) => {
-    await assertCategoryBelongsToTenant(tx, input.categoryId);
-
-    const before = await tx.product.findUniqueOrThrow({ where: { id } });
-    let after;
-    try {
-      after = await tx.product.update({
-        where: { id },
-        data: {
-          categoryId: input.categoryId,
-          nameMk: input.nameMk,
-          nameEn: input.nameEn,
-          sku: input.sku,
-          description: input.description ?? null,
-          barcode: input.barcode ?? null,
-          imageUrl: input.imageUrl ?? null,
-          defaultVatRate: input.defaultVatRate ?? null,
-          isActive: input.isActive,
-        },
-      });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("sku", "This SKU is already used by another product.");
-      }
-      throw error;
-    }
-
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "Product",
-      entityId: id,
-      action: "UPDATE",
-      oldValue: before,
-      newValue: after,
-    });
-    return after;
-  });
+  return withTenantContext(tenantId, (tx) => updateProductInTx(tx, tenantId, actorUserId, id, input));
 }
 
 export async function setProductActive(tenantId: string, actorUserId: string, id: string, isActive: boolean) {

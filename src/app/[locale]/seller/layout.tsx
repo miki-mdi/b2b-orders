@@ -40,6 +40,9 @@ export default async function SellerLayout({ children }: { children: React.React
         <Link href="/seller/audit" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
           {t("audit")}
         </Link>
+        <Link href="/seller/imports" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          {t("imports")}
+        </Link>
         <Link href="/seller/exports" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
           {t("exports")}
         </Link>

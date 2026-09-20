@@ -51,93 +51,115 @@ export function getProductUnit(tenantId: string, id: string) {
   return withTenantContext(tenantId, (tx) => tx.productUnit.findUnique({ where: { id }, include: { unitOfMeasure: true } }));
 }
 
+/** Tx-scoped core, reused by CSV import (Phase 1F-A) - see category-service.ts's createCategoryInTx comment. */
+export async function createProductUnitInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  productId: string,
+  input: ProductUnitInput,
+  reason?: string
+) {
+  await assertProductBelongsToTenant(tx, productId);
+  await assertUnitOfMeasureBelongsToTenant(tx, input.unitOfMeasureId);
+
+  let productUnit;
+  try {
+    productUnit = await tx.productUnit.create({
+      data: {
+        tenantId,
+        productId,
+        unitOfMeasureId: input.unitOfMeasureId,
+        sku: input.sku,
+        label: input.label,
+        barcode: input.barcode ?? null,
+        conversionFactorToBase: input.conversionFactorToBase ?? null,
+        minOrderQty: input.minOrderQty,
+        orderIncrement: input.orderIncrement,
+        isDefault: input.isDefault,
+        isActive: input.isActive,
+      },
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("sku", "This SKU is already used by another product unit.");
+    }
+    throw error;
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "ProductUnit",
+    entityId: productUnit.id,
+    action: "CREATE",
+    newValue: productUnit,
+    reason,
+  });
+  return productUnit;
+}
+
 export async function createProductUnit(
   tenantId: string,
   actorUserId: string,
   productId: string,
   input: ProductUnitInput
 ) {
-  return withTenantContext(tenantId, async (tx) => {
-    await assertProductBelongsToTenant(tx, productId);
-    await assertUnitOfMeasureBelongsToTenant(tx, input.unitOfMeasureId);
+  return withTenantContext(tenantId, (tx) => createProductUnitInTx(tx, tenantId, actorUserId, productId, input));
+}
 
-    let productUnit;
-    try {
-      productUnit = await tx.productUnit.create({
-        data: {
-          tenantId,
-          productId,
-          unitOfMeasureId: input.unitOfMeasureId,
-          sku: input.sku,
-          label: input.label,
-          barcode: input.barcode ?? null,
-          conversionFactorToBase: input.conversionFactorToBase ?? null,
-          minOrderQty: input.minOrderQty,
-          orderIncrement: input.orderIncrement,
-          isDefault: input.isDefault,
-          isActive: input.isActive,
-        },
-      });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("sku", "This SKU is already used by another product unit.");
-      }
-      throw error;
-    }
+/** Tx-scoped core, reused by CSV import (Phase 1F-A). */
+export async function updateProductUnitInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  id: string,
+  input: ProductUnitInput,
+  reason?: string
+) {
+  await assertUnitOfMeasureBelongsToTenant(tx, input.unitOfMeasureId);
 
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "ProductUnit",
-      entityId: productUnit.id,
-      action: "CREATE",
-      newValue: productUnit,
+  const before = await tx.productUnit.findUniqueOrThrow({ where: { id } });
+  let after;
+  try {
+    after = await tx.productUnit.update({
+      where: { id },
+      data: {
+        unitOfMeasureId: input.unitOfMeasureId,
+        sku: input.sku,
+        label: input.label,
+        barcode: input.barcode ?? null,
+        conversionFactorToBase: input.conversionFactorToBase ?? null,
+        minOrderQty: input.minOrderQty,
+        orderIncrement: input.orderIncrement,
+        isDefault: input.isDefault,
+        isActive: input.isActive,
+      },
     });
-    return productUnit;
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("sku", "This SKU is already used by another product unit.");
+    }
+    throw error;
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "ProductUnit",
+    entityId: id,
+    action: "UPDATE",
+    oldValue: before,
+    newValue: after,
+    reason,
   });
+  return after;
 }
 
 export async function updateProductUnit(tenantId: string, actorUserId: string, id: string, input: ProductUnitInput) {
-  return withTenantContext(tenantId, async (tx) => {
-    await assertUnitOfMeasureBelongsToTenant(tx, input.unitOfMeasureId);
-
-    const before = await tx.productUnit.findUniqueOrThrow({ where: { id } });
-    let after;
-    try {
-      after = await tx.productUnit.update({
-        where: { id },
-        data: {
-          unitOfMeasureId: input.unitOfMeasureId,
-          sku: input.sku,
-          label: input.label,
-          barcode: input.barcode ?? null,
-          conversionFactorToBase: input.conversionFactorToBase ?? null,
-          minOrderQty: input.minOrderQty,
-          orderIncrement: input.orderIncrement,
-          isDefault: input.isDefault,
-          isActive: input.isActive,
-        },
-      });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("sku", "This SKU is already used by another product unit.");
-      }
-      throw error;
-    }
-
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "ProductUnit",
-      entityId: id,
-      action: "UPDATE",
-      oldValue: before,
-      newValue: after,
-    });
-    return after;
-  });
+  return withTenantContext(tenantId, (tx) => updateProductUnitInTx(tx, tenantId, actorUserId, id, input));
 }
 
 export async function setProductUnitActive(tenantId: string, actorUserId: string, id: string, isActive: boolean) {

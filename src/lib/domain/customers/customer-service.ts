@@ -1,4 +1,5 @@
 import type { CustomerInput } from "@/lib/validation/customers";
+import type { ScopedTransactionClient } from "@/lib/db/scoped-client";
 import { withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
 import { DuplicateValueError, isUniqueConstraintError } from "@/lib/domain/shared/errors";
@@ -55,56 +56,77 @@ function toData(input: CustomerInput) {
   };
 }
 
-export async function createCustomer(tenantId: string, actorUserId: string, input: CustomerInput) {
-  return withTenantContext(tenantId, async (tx) => {
-    let customer;
-    try {
-      customer = await tx.customer.create({ data: { tenantId, ...toData(input) } });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("code", "This customer code is already in use.");
-      }
-      throw error;
+/** Tx-scoped core, reused by CSV import (Phase 1F-A) - see category-service.ts's createCategoryInTx comment. */
+export async function createCustomerInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  input: CustomerInput,
+  reason?: string
+) {
+  let customer;
+  try {
+    customer = await tx.customer.create({ data: { tenantId, ...toData(input) } });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("code", "This customer code is already in use.");
     }
+    throw error;
+  }
 
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "Customer",
-      entityId: customer.id,
-      action: "CREATE",
-      newValue: customer,
-    });
-    return customer;
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "Customer",
+    entityId: customer.id,
+    action: "CREATE",
+    newValue: customer,
+    reason,
   });
+  return customer;
+}
+
+export async function createCustomer(tenantId: string, actorUserId: string, input: CustomerInput) {
+  return withTenantContext(tenantId, (tx) => createCustomerInTx(tx, tenantId, actorUserId, input));
+}
+
+/** Tx-scoped core, reused by CSV import (Phase 1F-A). */
+export async function updateCustomerInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  id: string,
+  input: CustomerInput,
+  reason?: string
+) {
+  const before = await tx.customer.findUniqueOrThrow({ where: { id } });
+  let after;
+  try {
+    after = await tx.customer.update({ where: { id }, data: toData(input) });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("code", "This customer code is already in use.");
+    }
+    throw error;
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "Customer",
+    entityId: id,
+    action: "UPDATE",
+    oldValue: before,
+    newValue: after,
+    reason,
+  });
+  return after;
 }
 
 export async function updateCustomer(tenantId: string, actorUserId: string, id: string, input: CustomerInput) {
-  return withTenantContext(tenantId, async (tx) => {
-    const before = await tx.customer.findUniqueOrThrow({ where: { id } });
-    let after;
-    try {
-      after = await tx.customer.update({ where: { id }, data: toData(input) });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("code", "This customer code is already in use.");
-      }
-      throw error;
-    }
-
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "Customer",
-      entityId: id,
-      action: "UPDATE",
-      oldValue: before,
-      newValue: after,
-    });
-    return after;
-  });
+  return withTenantContext(tenantId, (tx) => updateCustomerInTx(tx, tenantId, actorUserId, id, input));
 }
 
 export async function setCustomerActive(tenantId: string, actorUserId: string, id: string, isActive: boolean) {

@@ -15,6 +15,18 @@ const checkbox = z.preprocess((v) => v === "on" || v === true || v === "true", z
 export const categoryInputSchema = z.object({
   nameMk: z.string().trim().min(1, "Macedonian name is required").max(200),
   nameEn: z.string().trim().min(1, "English name is required").max(200),
+  // Optional stable business key (Phase 1F-A) - lets a seller assign a
+  // translation-independent identifier a CSV import can later match rows
+  // against, same as Customer.code/PriceList.code already do.
+  code: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+    z
+      .string()
+      .trim()
+      .max(40, "Code must be 40 characters or fewer")
+      .regex(/^[a-zA-Z0-9._-]+$/, "Code may only contain letters, numbers, dots, dashes and underscores")
+      .optional()
+  ),
   description: optionalTrimmedString(2000),
   sortOrder: z.coerce
     .number({ message: "Sort order must be a number" })

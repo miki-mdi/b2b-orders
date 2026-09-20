@@ -32,42 +32,79 @@ export function getPriceListItem(tenantId: string, id: string) {
   );
 }
 
+/** Tx-scoped core, reused by CSV import (Phase 1F-A) - see category-service.ts's createCategoryInTx comment. */
+export async function createPriceListItemInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  priceListId: string,
+  input: PriceListItemInput,
+  reason?: string
+) {
+  await assertPriceListBelongsToTenant(tx, priceListId);
+  await assertProductUnitBelongsToTenant(tx, input.productUnitId);
+
+  let item;
+  try {
+    // The @@unique([priceListId, productUnitId]) constraint on
+    // PriceListItem is what actually prevents a duplicate entry - this
+    // catch just turns that DB-level rejection into a friendly error.
+    item = await tx.priceListItem.create({
+      data: { priceListId, productUnitId: input.productUnitId, price: input.price },
+    });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("productUnitId", "This product unit already has a price in this price list.");
+    }
+    throw error;
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "PriceListItem",
+    entityId: item.id,
+    action: "CREATE",
+    newValue: item,
+    reason,
+  });
+  return item;
+}
+
 export async function createPriceListItem(
   tenantId: string,
   actorUserId: string,
   priceListId: string,
   input: PriceListItemInput
 ) {
-  return withTenantContext(tenantId, async (tx) => {
-    await assertPriceListBelongsToTenant(tx, priceListId);
-    await assertProductUnitBelongsToTenant(tx, input.productUnitId);
+  return withTenantContext(tenantId, (tx) => createPriceListItemInTx(tx, tenantId, actorUserId, priceListId, input));
+}
 
-    let item;
-    try {
-      // The @@unique([priceListId, productUnitId]) constraint on
-      // PriceListItem is what actually prevents a duplicate entry - this
-      // catch just turns that DB-level rejection into a friendly error.
-      item = await tx.priceListItem.create({
-        data: { priceListId, productUnitId: input.productUnitId, price: input.price },
-      });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("productUnitId", "This product unit already has a price in this price list.");
-      }
-      throw error;
-    }
+/** Tx-scoped core, reused by CSV import (Phase 1F-A). */
+export async function updatePriceListItemInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  id: string,
+  input: Pick<PriceListItemInput, "price">,
+  reason?: string
+) {
+  const before = await tx.priceListItem.findUniqueOrThrow({ where: { id } });
+  const after = await tx.priceListItem.update({ where: { id }, data: { price: input.price } });
 
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "PriceListItem",
-      entityId: item.id,
-      action: "CREATE",
-      newValue: item,
-    });
-    return item;
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "PriceListItem",
+    entityId: id,
+    action: "UPDATE",
+    oldValue: before,
+    newValue: after,
+    reason,
   });
+  return after;
 }
 
 export async function updatePriceListItem(
@@ -76,22 +113,7 @@ export async function updatePriceListItem(
   id: string,
   input: Pick<PriceListItemInput, "price">
 ) {
-  return withTenantContext(tenantId, async (tx) => {
-    const before = await tx.priceListItem.findUniqueOrThrow({ where: { id } });
-    const after = await tx.priceListItem.update({ where: { id }, data: { price: input.price } });
-
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "PriceListItem",
-      entityId: id,
-      action: "UPDATE",
-      oldValue: before,
-      newValue: after,
-    });
-    return after;
-  });
+  return withTenantContext(tenantId, (tx) => updatePriceListItemInTx(tx, tenantId, actorUserId, id, input));
 }
 
 export async function deletePriceListItem(tenantId: string, actorUserId: string, id: string) {

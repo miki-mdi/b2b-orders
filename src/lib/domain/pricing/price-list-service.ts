@@ -1,4 +1,5 @@
 import type { PriceListInput } from "@/lib/validation/pricing";
+import type { ScopedTransactionClient } from "@/lib/db/scoped-client";
 import { withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
 import { DuplicateValueError, isUniqueConstraintError } from "@/lib/domain/shared/errors";
@@ -32,56 +33,77 @@ function toData(input: PriceListInput) {
   };
 }
 
-export async function createPriceList(tenantId: string, actorUserId: string, input: PriceListInput) {
-  return withTenantContext(tenantId, async (tx) => {
-    let priceList;
-    try {
-      priceList = await tx.priceList.create({ data: { tenantId, ...toData(input) } });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("code", "This code is already used by another price list.");
-      }
-      throw error;
+/** Tx-scoped core, reused by CSV import (Phase 1F-A) - see category-service.ts's createCategoryInTx comment. */
+export async function createPriceListInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  input: PriceListInput,
+  reason?: string
+) {
+  let priceList;
+  try {
+    priceList = await tx.priceList.create({ data: { tenantId, ...toData(input) } });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("code", "This code is already used by another price list.");
     }
+    throw error;
+  }
 
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "PriceList",
-      entityId: priceList.id,
-      action: "CREATE",
-      newValue: priceList,
-    });
-    return priceList;
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "PriceList",
+    entityId: priceList.id,
+    action: "CREATE",
+    newValue: priceList,
+    reason,
   });
+  return priceList;
+}
+
+export async function createPriceList(tenantId: string, actorUserId: string, input: PriceListInput) {
+  return withTenantContext(tenantId, (tx) => createPriceListInTx(tx, tenantId, actorUserId, input));
+}
+
+/** Tx-scoped core, reused by CSV import (Phase 1F-A). */
+export async function updatePriceListInTx(
+  tx: ScopedTransactionClient,
+  tenantId: string,
+  actorUserId: string,
+  id: string,
+  input: PriceListInput,
+  reason?: string
+) {
+  const before = await tx.priceList.findUniqueOrThrow({ where: { id } });
+  let after;
+  try {
+    after = await tx.priceList.update({ where: { id }, data: toData(input) });
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      throw new DuplicateValueError("code", "This code is already used by another price list.");
+    }
+    throw error;
+  }
+
+  await writeAuditLogEntry(tx, {
+    tenantId,
+    actorUserId,
+    actingContext: "TENANT",
+    entityType: "PriceList",
+    entityId: id,
+    action: "UPDATE",
+    oldValue: before,
+    newValue: after,
+    reason,
+  });
+  return after;
 }
 
 export async function updatePriceList(tenantId: string, actorUserId: string, id: string, input: PriceListInput) {
-  return withTenantContext(tenantId, async (tx) => {
-    const before = await tx.priceList.findUniqueOrThrow({ where: { id } });
-    let after;
-    try {
-      after = await tx.priceList.update({ where: { id }, data: toData(input) });
-    } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new DuplicateValueError("code", "This code is already used by another price list.");
-      }
-      throw error;
-    }
-
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "PriceList",
-      entityId: id,
-      action: "UPDATE",
-      oldValue: before,
-      newValue: after,
-    });
-    return after;
-  });
+  return withTenantContext(tenantId, (tx) => updatePriceListInTx(tx, tenantId, actorUserId, id, input));
 }
 
 export async function setPriceListActive(tenantId: string, actorUserId: string, id: string, isActive: boolean) {

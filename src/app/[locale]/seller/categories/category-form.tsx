@@ -57,6 +57,20 @@ export function CategoryForm({
       </div>
 
       <div>
+        <label htmlFor="code" className="block text-sm font-medium">
+          {t("code")}
+        </label>
+        <input
+          id="code"
+          name="code"
+          defaultValue={category?.code ?? ""}
+          aria-invalid={Boolean(state.fieldErrors?.code)}
+          className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+        />
+        <FieldError message={state.fieldErrors?.code} />
+      </div>
+
+      <div>
         <label htmlFor="description" className="block text-sm font-medium">
           {t("description")}
         </label>
