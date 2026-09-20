@@ -9,7 +9,8 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "sellerAdmin": "Seller admin",
-    "buyerPortal": "Buyer portal"
+    "buyerPortal": "Buyer portal",
+    "diagnostics": "Diagnostics"
   },
   "membership": {
     "platformAdmin": "Platform Admin",
@@ -26,6 +27,11 @@
   "locale": {
     "switchTo": "Switch to {locale}"
   },
+  "common": {
+    "errorTitle": "Something went wrong",
+    "errorMessage": "An unexpected error occurred. You can try again, or go back and retry the action.",
+    "retry": "Try again"
+  },
   "seller": {
     "nav": {
       "title": "Seller Admin",
@@ -36,16 +42,31 @@
       "customers": "Customers",
       "priceLists": "Price Lists",
       "orders": "Orders",
+      "audit": "Audit Log",
+      "exports": "Exports",
       "backToSite": "Back to site"
     },
     "dashboard": {
-      "title": "Catalog",
+      "title": "Dashboard",
       "intro": "Manage the categories, units of measure and products your customers will see.",
       "categoriesCard": "Categories",
       "unitsCard": "Units of Measure",
       "productsCard": "Products",
       "customersCard": "Customers",
-      "priceListsCard": "Price Lists"
+      "priceListsCard": "Price Lists",
+      "metricsTitle": "Order pipeline",
+      "awaitingReview": "Awaiting review",
+      "confirmedCount": "Confirmed",
+      "pickingCount": "Picking",
+      "readyCount": "Ready",
+      "outForDeliveryCount": "Out for delivery",
+      "deliveredCount": "Delivered",
+      "cancelledCount": "Cancelled",
+      "activeCustomers": "Active customers",
+      "activeProducts": "Active product units",
+      "recentActivityTitle": "Recent orders",
+      "recentActivityEmpty": "No orders yet.",
+      "quickLinksTitle": "Manage"
     },
     "common": {
       "active": "Active",
@@ -58,7 +79,10 @@
       "backToList": "Back to list",
       "actions": "Actions",
       "status": "Status",
-      "loading": "Loading…"
+      "loading": "Loading…",
+      "previous": "Previous",
+      "next": "Next",
+      "pageSummary": "Page {page} of {totalPages} ({total} total)"
     },
     "categories": {
       "title": "Categories",
@@ -290,7 +314,51 @@
         "READY": "Ready",
         "OUT_FOR_DELIVERY": "Out for delivery",
         "DELIVERED": "Delivered"
+      },
+      "activity": {
+        "title": "Activity",
+        "empty": "No activity recorded yet.",
+        "orderCreated": "Order created",
+        "statusChanged": "Status changed: {old} → {new}",
+        "quantityAdjusted": "{product}: quantity adjusted {old} → {new}",
+        "generic": "{action} on {entity}",
+        "reasonLabel": "Reason: {reason}",
+        "actorSystem": "System"
       }
+    },
+    "audit": {
+      "title": "Audit Log",
+      "intro": "A read-only record of tracked changes for your tenant. Entries cannot be edited or deleted from the application.",
+      "empty": "No audit entries match these filters.",
+      "filterDateFrom": "From",
+      "filterDateTo": "To",
+      "filterActor": "Actor",
+      "filterActorAll": "All actors",
+      "filterEntityType": "Entity type",
+      "filterEntityTypeAll": "All entity types",
+      "filterAction": "Action",
+      "filterActionAll": "All actions",
+      "apply": "Filter",
+      "reset": "Reset",
+      "columnDate": "Date",
+      "columnActor": "Actor",
+      "columnContext": "Context",
+      "columnEntity": "Entity",
+      "columnAction": "Action",
+      "columnField": "Field",
+      "columnChange": "Change",
+      "columnReason": "Reason",
+      "systemActor": "System"
+    },
+    "exports": {
+      "title": "Exports",
+      "intro": "Download your tenant's data as CSV. Each export is recorded in the audit log.",
+      "customers": "Customers",
+      "products": "Products & packaging",
+      "priceLists": "Price lists",
+      "orders": "Orders",
+      "orderLines": "Order lines",
+      "download": "Download CSV"
     }
   },
   "buyer": {
@@ -408,6 +476,36 @@
         "OUT_FOR_DELIVERY": "Out for delivery",
         "DELIVERED": "Delivered"
       }
+    }
+  },
+  "admin": {
+    "nav": {
+      "title": "Platform Admin",
+      "diagnostics": "Diagnostics",
+      "backToSite": "Back to site"
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "appStatus": "Application status",
+      "statusOk": "OK",
+      "environment": "Environment",
+      "appVersion": "App version",
+      "gitCommit": "Git commit",
+      "unknown": "Unknown",
+      "database": "Database",
+      "databaseConnected": "Connected",
+      "databaseDisconnected": "Disconnected",
+      "latency": "{ms} ms",
+      "migrations": "Migrations",
+      "migrationsUnavailable": "Migration state unavailable",
+      "appliedCount": "{count} applied",
+      "latestMigration": "Latest: {name}",
+      "lastAppliedAt": "Applied {date}",
+      "checks": "Configuration checks",
+      "databaseUrlConfigured": "DATABASE_URL configured",
+      "authSecretConfigured": "AUTH_SECRET configured",
+      "yes": "Yes",
+      "no": "No"
     }
   }
 }

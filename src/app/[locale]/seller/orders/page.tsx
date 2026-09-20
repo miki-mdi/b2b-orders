@@ -1,10 +1,12 @@
 import type { OrderStatus } from "@prisma/client";
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
-import { listOrdersForTenant } from "@/lib/domain/orders/order-service";
+import { listOrdersForTenantPage } from "@/lib/domain/orders/order-service";
 import { computeOrderTotals, type OrderLineForTotals } from "@/lib/domain/orders/order-totals";
+import { clampPage } from "@/lib/pagination";
 import { Link } from "@/i18n/navigation";
 import { OrderStatusBadge } from "@/components/seller/order-status-badge";
+import { Pagination } from "@/components/seller/pagination";
 
 const FILTERABLE_STATUSES: OrderStatus[] = [
   "SUBMITTED",
@@ -37,15 +39,27 @@ function toLineInputs(
 export default async function SellerOrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
   const session = await requireSellerSession();
-  const { status, q } = await searchParams;
+  const { status, q, page: pageParam } = await searchParams;
   const t = await getTranslations("seller.orders");
   const tStatus = await getTranslations("seller.orders.status");
+  const tCommon = await getTranslations("seller.common");
 
   const statusFilter = FILTERABLE_STATUSES.includes(status as OrderStatus) ? (status as OrderStatus) : undefined;
-  const orders = await listOrdersForTenant(session.tenantId, { status: statusFilter, search: q || undefined });
+  const page = clampPage(pageParam);
+  const result = await listOrdersForTenantPage(session.tenantId, { status: statusFilter, search: q || undefined, page });
+  const orders = result.items;
+
+  function buildHref(targetPage: number): string {
+    const query = new URLSearchParams();
+    if (statusFilter) query.set("status", statusFilter);
+    if (q) query.set("q", q);
+    if (targetPage > 1) query.set("page", String(targetPage));
+    const qs = query.toString();
+    return qs ? `/seller/orders?${qs}` : "/seller/orders";
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -149,6 +163,15 @@ export default async function SellerOrdersPage({
           </table>
         </div>
       )}
+
+      <Pagination
+        page={result.page}
+        totalPages={result.totalPages}
+        buildHref={buildHref}
+        previousLabel={tCommon("previous")}
+        nextLabel={tCommon("next")}
+        summaryLabel={tCommon("pageSummary", { page: result.page, totalPages: result.totalPages, total: result.total })}
+      />
     </div>
   );
 }

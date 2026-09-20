@@ -35,6 +35,11 @@ export default async function HomePage() {
                 {t("buyerPortal")}
               </Link>
             )}
+            {session.user.isPlatformAdmin && (
+              <Link href="/admin/diagnostics" className="underline underline-offset-2">
+                {t("diagnostics")}
+              </Link>
+            )}
             <form
               action={async () => {
                 "use server";

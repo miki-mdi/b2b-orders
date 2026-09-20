@@ -1,16 +1,21 @@
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
-import { listCustomers } from "@/lib/domain/customers/customer-service";
+import { listCustomersPage } from "@/lib/domain/customers/customer-service";
+import { clampPage } from "@/lib/pagination";
 import { Link } from "@/i18n/navigation";
 import { StatusBadge } from "@/components/seller/status-badge";
 import { ToggleActiveForm } from "@/components/seller/toggle-active-form";
+import { Pagination } from "@/components/seller/pagination";
 import { toggleCustomerActiveAction } from "./actions";
 
-export default async function CustomersPage() {
+export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const session = await requireSellerSession();
+  const { page: pageParam } = await searchParams;
   const t = await getTranslations("seller.customers");
   const tCommon = await getTranslations("seller.common");
-  const customers = await listCustomers(session.tenantId);
+  const page = clampPage(pageParam);
+  const result = await listCustomersPage(session.tenantId, page);
+  const customers = result.items;
 
   return (
     <div className="flex flex-col gap-4">
@@ -78,6 +83,15 @@ export default async function CustomersPage() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={result.page}
+        totalPages={result.totalPages}
+        buildHref={(targetPage) => (targetPage > 1 ? `/seller/customers?page=${targetPage}` : "/seller/customers")}
+        previousLabel={tCommon("previous")}
+        nextLabel={tCommon("next")}
+        summaryLabel={tCommon("pageSummary", { page: result.page, totalPages: result.totalPages, total: result.total })}
+      />
     </div>
   );
 }

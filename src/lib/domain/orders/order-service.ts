@@ -2,6 +2,7 @@ import type { ActingContext, OrderStatus, Prisma } from "@prisma/client";
 import { withCustomerContext, withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
 import { isUniqueConstraintError } from "@/lib/domain/shared/errors";
+import { clampPage, clampPageSize, clampSearchTerm, toPageResult, type PageResult } from "@/lib/pagination";
 import { resolveCartLine, type ResolvedCartLine } from "./cart-resolution";
 import { isPastCutOffForDelivery } from "./cutoff";
 import { publishOrderEvent } from "./order-events";
@@ -58,6 +59,55 @@ export function listOrdersForTenant(tenantId: string, filter: OrderInboxFilter =
       include: { lines: true, customer: true },
       orderBy: { createdAt: "desc" },
     });
+  });
+}
+
+export type OrderInboxPageRequest = { status?: OrderStatus; search?: string; page?: number; pageSize?: number };
+
+function orderInboxWhere(filter: OrderInboxFilter) {
+  const search = clampSearchTerm(filter.search);
+  const orderNumberSearch = search && /^\d+$/.test(search) ? Number(search) : undefined;
+
+  return {
+    ...(filter.status ? { status: filter.status } : {}),
+    ...(search
+      ? {
+          OR: [
+            ...(orderNumberSearch !== undefined ? [{ orderNumber: orderNumberSearch }] : []),
+            { customer: { name: { contains: search, mode: "insensitive" as const } } },
+          ],
+        }
+      : {}),
+  };
+}
+
+/**
+ * Paginated variant of listOrdersForTenant for the seller order inbox UI
+ * (Phase 1E, §8) - server-side pagination so an established pilot tenant's
+ * full order history is never loaded into one page. listOrdersForTenant
+ * itself is left unpaginated/unchanged for its other callers (tests, and
+ * any future internal use that genuinely needs the full set).
+ */
+export function listOrdersForTenantPage(
+  tenantId: string,
+  request: OrderInboxPageRequest = {}
+): Promise<PageResult<Prisma.OrderGetPayload<{ include: { lines: true; customer: true } }>>> {
+  const page = clampPage(request.page);
+  const pageSize = clampPageSize(request.pageSize);
+  const where = orderInboxWhere(request);
+
+  return withTenantContext(tenantId, async (tx) => {
+    const [items, total] = await Promise.all([
+      tx.order.findMany({
+        where,
+        include: { lines: true, customer: true },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      tx.order.count({ where }),
+    ]);
+    return toPageResult(items, total, page, pageSize);
   });
 }
 

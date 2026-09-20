@@ -1,16 +1,21 @@
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
-import { listProducts } from "@/lib/domain/catalog/product-service";
+import { listProductsPage } from "@/lib/domain/catalog/product-service";
+import { clampPage } from "@/lib/pagination";
 import { Link } from "@/i18n/navigation";
 import { StatusBadge } from "@/components/seller/status-badge";
 import { ToggleActiveForm } from "@/components/seller/toggle-active-form";
+import { Pagination } from "@/components/seller/pagination";
 import { toggleProductActiveAction } from "./actions";
 
-export default async function ProductsPage() {
+export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const session = await requireSellerSession();
+  const { page: pageParam } = await searchParams;
   const t = await getTranslations("seller.products");
   const tCommon = await getTranslations("seller.common");
-  const products = await listProducts(session.tenantId);
+  const page = clampPage(pageParam);
+  const result = await listProductsPage(session.tenantId, page);
+  const products = result.items;
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,6 +86,15 @@ export default async function ProductsPage() {
           </table>
         </div>
       )}
+
+      <Pagination
+        page={result.page}
+        totalPages={result.totalPages}
+        buildHref={(targetPage) => (targetPage > 1 ? `/seller/products?page=${targetPage}` : "/seller/products")}
+        previousLabel={tCommon("previous")}
+        nextLabel={tCommon("next")}
+        summaryLabel={tCommon("pageSummary", { page: result.page, totalPages: result.totalPages, total: result.total })}
+      />
     </div>
   );
 }

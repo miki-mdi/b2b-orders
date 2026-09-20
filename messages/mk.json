@@ -9,7 +9,8 @@
     "signIn": "Најава",
     "signOut": "Одјава",
     "sellerAdmin": "Администрација за продавачи",
-    "buyerPortal": "Купувачки портал"
+    "buyerPortal": "Купувачки портал",
+    "diagnostics": "Дијагностика"
   },
   "membership": {
     "platformAdmin": "Администратор на платформата",
@@ -26,6 +27,11 @@
   "locale": {
     "switchTo": "Смени на {locale}"
   },
+  "common": {
+    "errorTitle": "Настана грешка",
+    "errorMessage": "Настана неочекувана грешка. Обидете се повторно, или вратете се назад и повторете го дејството.",
+    "retry": "Обиди се повторно"
+  },
   "seller": {
     "nav": {
       "title": "Администрација за продавачи",
@@ -36,16 +42,31 @@
       "customers": "Клиенти",
       "priceLists": "Ценовници",
       "orders": "Нарачки",
+      "audit": "Дневник на активности",
+      "exports": "Извози",
       "backToSite": "Назад кон страницата"
     },
     "dashboard": {
-      "title": "Каталог",
+      "title": "Почетна",
       "intro": "Управувајте со категориите, мерните единици и производите што ќе ги гледаат вашите клиенти.",
       "categoriesCard": "Категории",
       "unitsCard": "Мерни единици",
       "productsCard": "Производи",
       "customersCard": "Клиенти",
-      "priceListsCard": "Ценовници"
+      "priceListsCard": "Ценовници",
+      "metricsTitle": "Тек на нарачки",
+      "awaitingReview": "Чекаат преглед",
+      "confirmedCount": "Потврдени",
+      "pickingCount": "Се комплетираат",
+      "readyCount": "Подготвени",
+      "outForDeliveryCount": "Во достава",
+      "deliveredCount": "Доставени",
+      "cancelledCount": "Откажани",
+      "activeCustomers": "Активни клиенти",
+      "activeProducts": "Активни единици на производи",
+      "recentActivityTitle": "Неодамнешни нарачки",
+      "recentActivityEmpty": "Сè уште нема нарачки.",
+      "quickLinksTitle": "Управување"
     },
     "common": {
       "active": "Активно",
@@ -58,7 +79,10 @@
       "backToList": "Назад кон листата",
       "actions": "Акции",
       "status": "Статус",
-      "loading": "Се вчитува…"
+      "loading": "Се вчитува…",
+      "previous": "Претходна",
+      "next": "Следна",
+      "pageSummary": "Страница {page} од {totalPages} ({total} вкупно)"
     },
     "categories": {
       "title": "Категории",
@@ -290,7 +314,51 @@
         "READY": "Подготвена",
         "OUT_FOR_DELIVERY": "Во достава",
         "DELIVERED": "Доставена"
+      },
+      "activity": {
+        "title": "Активности",
+        "empty": "Сè уште нема забележани активности.",
+        "orderCreated": "Нарачката е создадена",
+        "statusChanged": "Статусот е сменет: {old} → {new}",
+        "quantityAdjusted": "{product}: количината е прилагодена {old} → {new}",
+        "generic": "{action} на {entity}",
+        "reasonLabel": "Причина: {reason}",
+        "actorSystem": "Систем"
       }
+    },
+    "audit": {
+      "title": "Дневник на активности",
+      "intro": "Читаема евиденција на следени промени за вашиот тенант. Записите не можат да се уредуваат или бришат од апликацијата.",
+      "empty": "Нема записи што одговараат на овие филтри.",
+      "filterDateFrom": "Од",
+      "filterDateTo": "До",
+      "filterActor": "Извршител",
+      "filterActorAll": "Сите извршители",
+      "filterEntityType": "Тип на ентитет",
+      "filterEntityTypeAll": "Сите типови",
+      "filterAction": "Дејство",
+      "filterActionAll": "Сите дејства",
+      "apply": "Филтрирај",
+      "reset": "Ресетирај",
+      "columnDate": "Датум",
+      "columnActor": "Извршител",
+      "columnContext": "Контекст",
+      "columnEntity": "Ентитет",
+      "columnAction": "Дејство",
+      "columnField": "Поле",
+      "columnChange": "Промена",
+      "columnReason": "Причина",
+      "systemActor": "Систем"
+    },
+    "exports": {
+      "title": "Извози",
+      "intro": "Преземете ги податоците на вашиот тенант како CSV. Секој извоз се запишува во дневникот на активности.",
+      "customers": "Клиенти",
+      "products": "Производи и пакувања",
+      "priceLists": "Ценовници",
+      "orders": "Нарачки",
+      "orderLines": "Ставки од нарачки",
+      "download": "Преземи CSV"
     }
   },
   "buyer": {
@@ -408,6 +476,36 @@
         "OUT_FOR_DELIVERY": "Во достава",
         "DELIVERED": "Доставена"
       }
+    }
+  },
+  "admin": {
+    "nav": {
+      "title": "Администратор на платформата",
+      "diagnostics": "Дијагностика",
+      "backToSite": "Назад кон страницата"
+    },
+    "diagnostics": {
+      "title": "Дијагностика",
+      "appStatus": "Статус на апликацијата",
+      "statusOk": "Во ред",
+      "environment": "Опкружување",
+      "appVersion": "Верзија на апликацијата",
+      "gitCommit": "Git commit",
+      "unknown": "Непознато",
+      "database": "База на податоци",
+      "databaseConnected": "Поврзана",
+      "databaseDisconnected": "Неповрзана",
+      "latency": "{ms} ms",
+      "migrations": "Миграции",
+      "migrationsUnavailable": "Состојбата на миграциите не е достапна",
+      "appliedCount": "{count} применети",
+      "latestMigration": "Последна: {name}",
+      "lastAppliedAt": "Применета на {date}",
+      "checks": "Проверки на конфигурацијата",
+      "databaseUrlConfigured": "DATABASE_URL е конфигуриран",
+      "authSecretConfigured": "AUTH_SECRET е конфигуриран",
+      "yes": "Да",
+      "no": "Не"
     }
   }
 }

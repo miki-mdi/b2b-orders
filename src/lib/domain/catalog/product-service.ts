@@ -3,6 +3,7 @@ import type { ScopedTransactionClient } from "@/lib/db/scoped-client";
 import { withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
 import { DuplicateValueError, isUniqueConstraintError } from "@/lib/domain/shared/errors";
+import { clampPage, clampPageSize, toPageResult, type PageResult } from "@/lib/pagination";
 
 export class CategoryNotFoundError extends Error {}
 
@@ -10,6 +11,28 @@ export function listProducts(tenantId: string) {
   return withTenantContext(tenantId, (tx) =>
     tx.product.findMany({ include: { category: true }, orderBy: { nameEn: "asc" } })
   );
+}
+
+/** Paginated variant for the seller products list UI (Phase 1E, §8) - see order-service.ts's listOrdersForTenantPage comment for why this is a separate function rather than changing listProducts itself. */
+export async function listProductsPage(
+  tenantId: string,
+  page?: number,
+  pageSize?: number
+): Promise<PageResult<Awaited<ReturnType<typeof listProducts>>[number]>> {
+  const resolvedPage = clampPage(page);
+  const resolvedPageSize = clampPageSize(pageSize);
+  return withTenantContext(tenantId, async (tx) => {
+    const [items, total] = await Promise.all([
+      tx.product.findMany({
+        include: { category: true },
+        orderBy: { nameEn: "asc" },
+        skip: (resolvedPage - 1) * resolvedPageSize,
+        take: resolvedPageSize,
+      }),
+      tx.product.count(),
+    ]);
+    return toPageResult(items, total, resolvedPage, resolvedPageSize);
+  });
 }
 
 export function getProduct(tenantId: string, id: string) {

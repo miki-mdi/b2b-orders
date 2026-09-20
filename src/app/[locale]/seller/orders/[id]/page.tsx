@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
 import { getOrderForTenant } from "@/lib/domain/orders/order-service";
+import { listOrderActivity } from "@/lib/domain/orders/order-activity-service";
 import {
   computeLineFulfillment,
   computeLineTotals,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/domain/orders/order-totals";
 import { Link } from "@/i18n/navigation";
 import { OrderStatusBadge } from "@/components/seller/order-status-badge";
+import { OrderActivityTimeline } from "@/components/seller/order-activity-timeline";
 import { ConfirmOrderForm } from "./confirm-order-form";
 import { AdvanceStatusForm } from "./advance-status-form";
 import { markDeliveredAction, markOutForDeliveryAction, markPickingAction, markReadyAction } from "./actions";
@@ -36,6 +38,8 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
   if (!order) {
     notFound();
   }
+  const activity = await listOrderActivity(session.tenantId, id);
+  const tActivity = await getTranslations("seller.orders.activity");
 
   const lineInputs: OrderLineForTotals[] = order.lines.map((line) => ({
     requestedQty: Number(line.requestedQty),
@@ -228,6 +232,22 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
           </div>
         )}
       </div>
+
+      <OrderActivityTimeline
+        items={activity}
+        title={tActivity("title")}
+        empty={tActivity("empty")}
+        locale={locale}
+        translateStatus={(status) => tStatus(status)}
+        labels={{
+          orderCreated: tActivity("orderCreated"),
+          statusChanged: (oldLabel, newLabel) => tActivity("statusChanged", { old: oldLabel, new: newLabel }),
+          quantityAdjusted: (product, oldQty, newQty) => tActivity("quantityAdjusted", { product, old: oldQty, new: newQty }),
+          generic: (action, entity) => tActivity("generic", { action, entity }),
+          reasonLabel: (reason) => tActivity("reasonLabel", { reason }),
+          actorSystem: tActivity("actorSystem"),
+        }}
+      />
     </div>
   );
 }

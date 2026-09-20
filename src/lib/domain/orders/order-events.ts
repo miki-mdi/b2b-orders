@@ -19,6 +19,8 @@
  * listener (e.g. "send an email") should never be able to roll back an
  * order change if it fails.
  */
+import { logger } from "@/lib/logging/logger";
+
 export type OrderEventType =
   | "SUBMITTED"
   | "CONFIRMED"
@@ -58,7 +60,12 @@ export async function publishOrderEvent(event: OrderEvent): Promise<void> {
     try {
       await listener(event);
     } catch (error) {
-      console.error(`[order-events] listener failed for ${event.type} on order ${event.orderId}:`, error);
+      logger.error("order-event listener failed", {
+        orderEventType: event.type,
+        tenantId: event.tenantId,
+        orderId: event.orderId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }
@@ -67,7 +74,13 @@ export async function publishOrderEvent(event: OrderEvent): Promise<void> {
 // add to this in one place once a real notification channel exists -
 // nothing else in the codebase needs to change.
 onOrderEvent((event) => {
-  console.log(
-    `[order-event] ${event.type} tenant=${event.tenantId} order=${event.orderId} (#${event.orderNumber}) customer=${event.customerId} actor=${event.actorUserId ?? "system"} at=${event.occurredAt.toISOString()}`
-  );
+  logger.info("order-event", {
+    orderEventType: event.type,
+    tenantId: event.tenantId,
+    orderId: event.orderId,
+    orderNumber: event.orderNumber,
+    customerId: event.customerId,
+    userId: event.actorUserId ?? undefined,
+    occurredAt: event.occurredAt.toISOString(),
+  });
 });
