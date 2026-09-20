@@ -2,7 +2,7 @@
 
 Snapshot of where this project stands, for picking work back up in a new session. See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the original phase plan this has been following, and the other `docs/` files for the underlying architecture decisions — this file is a status snapshot, not a replacement for them.
 
-## Status: Phase 0 through Phase 1F-A complete and committed
+## Status: Phase 0 through Phase 1F-B1 complete and committed
 
 | Phase | Scope | Commit |
 |---|---|---|
@@ -14,10 +14,11 @@ Snapshot of where this project stands, for picking work back up in a new session
 | Phase 1E | Pilot hardening - audit log UI, order activity timeline, CSV export, dashboard metrics, platform diagnostics, structured logging, pagination | `df0c1da` |
 | Phase 1F-A | CSV import (8 entity types), validation/preview, auditability, onboarding readiness | `05bfc8a` |
 | Phase 1F-A fix | Responsive layout bug found in manual review (768px horizontal overflow on the Imports wizard) | `b437197` |
+| Phase 1F-B1 | Role separation and authorization - centralized capability model, Sales Rep/Warehouse Worker/Delivery Driver scoping | `223c64f` |
 
-**Latest commit: `b437197`** on `main`. Working tree is clean. Nothing has been pushed to a remote (none is configured) - all work is local-only, per every phase's instructions so far.
+**Latest commit: `223c64f`** on `main`. Working tree is clean. Nothing has been pushed to a remote (none is configured) - all work is local-only, per every phase's instructions so far.
 
-**Phase 1F-B has not been started.** See §18 below for its proposed scope, pending approval.
+**Phase 1F-B1 (role separation and authorization) is complete.** See §18 below for the full record. **Phase 1F-B2 remains proposed only, not started** - see §19.
 
 > **Action required before pilot/production, not code:** during Phase 1F-A's browser verification, this project's local `.env.local` (containing the dev Postgres passwords for both the `b2b_orders_app` and `b2b_orders_migrator` roles) was inadvertently read into a tool-call result and so appears in that session's transcript. These are local-dev-only credentials, not used anywhere else, but **rotate both Postgres role passwords and update `.env.local` before this project is ever pointed at a shared, pilot, or production database.** Nothing in the application or its history depends on the specific password values - this is a credential-hygiene action, not a code fix. See §17 for the fuller note.
 
@@ -75,7 +76,12 @@ The buyer catalog silently excludes any `ProductUnit` this function reports unav
 
 ## 5. Test status
 
-**317 tests passing, 0 failing** (up from 232 at the end of Phase 1E; **85 new tests** added in Phase 1F-A), across 43 files (`npm test`):
+**418 tests passing, 0 failing** (up from 317 at the end of Phase 1F-A; **101 new tests** added in Phase 1F-B1), across 47 files (`npm test`):
+- **`tests/auth/permissions.test.ts`** (Phase 1F-B1) - 95 assertions, one per cell of the approved capability matrix (§18), so an accidental edit to `ROLE_CAPABILITIES` in `src/lib/auth/permissions.ts` is caught immediately; plus `orderReadCapabilityFor`/`orderReadStatusScopeFor` return the right capability/status list per role.
+- **`tests/seller/customer-contact-info.test.ts`** (Phase 1F-B1) - `updateCustomerContactInfo` writes only `contactEmail`/`contactPhone`/`notes` and leaves `name`/`code`/`isActive`/`creditLimit` untouched; absent-vs-null clearing semantics; writes an audited `UPDATE` entry.
+- **`tests/seller/order-inbox-isolation.test.ts`** (extended in Phase 1F-B1) - `getOrderForTenant`'s `allowedStatuses` returns `null` (not the order) for a status outside scope, same as a cross-tenant order; `listOrdersForTenant`'s `statusIn` scopes the whole list; an explicit status-dropdown filter outside `statusIn`'s scope returns zero rows rather than widening it.
+
+Unchanged from Phase 0-1F-A, still green:
 - **`tests/import/csv-parser.test.ts`** (Phase 1F-A) - the dependency-free RFC4180-ish parser: quoted commas, escaped quotes, embedded newlines inside quotes, CRLF, UTF-8 BOM stripping, Macedonian/Cyrillic text, blank-line tolerance, malformed-row detection (wrong column count, oversized cell) without ever throwing.
 - **`tests/import/security.test.ts`** (Phase 1F-A) - `sanitizeForSpreadsheet` neutralizes every dangerous leading character (`= + - @`, tab, CR) and is proven wired into the shared `toCsv`; file-size and row-count limit enforcement.
 - **`tests/seller/export-security.test.ts`** (Phase 1F-A) - the same formula-injection fix proven end-to-end through a real `exportCustomersCsv` call, not just the unit-level sanitizer.
@@ -105,7 +111,7 @@ Run with `npm test`. Vitest is configured with `fileParallelism: false` (`vitest
 
 ## 6. Production build status
 
-`npm run build` succeeds cleanly (Next.js 16, Turbopack) as of `b437197`. Route count grew again in Phase 1F-A to include `/[locale]/seller/imports`, `/[locale]/seller/imports/[type]`, and `/api/seller/import/template/[type]` (template downloads for all 8 import types). `npm run lint`, `npm run typecheck`, and `prisma validate`/`prisma generate` are all clean (zero warnings, zero errors) as of the same commit. The build output still correctly shows `ƒ Proxy (Middleware)`, confirming the Phase 1C `middleware.ts`→`proxy.ts` fix remains in effect.
+`npm run build` succeeds cleanly (Next.js 16, Turbopack) as of `223c64f`. Phase 1F-B1 added no new routes (it's an authorization layer over existing ones), so the route table is unchanged from Phase 1F-A except that every seller route now enforces a capability. `npm run lint`, `npm run typecheck`, and `prisma validate`/`prisma generate` are all clean (zero warnings, zero errors) as of the same commit. The build output still correctly shows `ƒ Proxy (Middleware)`, confirming the Phase 1C `middleware.ts`→`proxy.ts` fix remains in effect.
 
 ## 7. Browser verification status
 
@@ -125,6 +131,12 @@ Two recurring environment quirks worth knowing about for future browser testing 
 - New environment note for this session: running `npm test` calls each test file's own `resetDatabase()`, which wipes whatever `npm run db:seed` had just put in the dev database - re-run `npm run db:seed` after the test suite (not just before it) if a browser-verification pass follows a test run in the same session, or sign-in will fail with "Invalid email or password" against accounts that no longer exist.
 - **Phase 1F-A, signed in as `seller-admin@alpha.test`**: full round-trips for the Categories, Products, ProductUnits, Customers, PriceLists, and PriceListItems import types - template download (200 OK), upload → preview (correct CREATE/UPDATE/NO_CHANGE/ERROR classification and counts) → confirm → result summary, verified against the actual seller UI afterward (imported customer appeared in `/seller/customers`; imported category→product→productUnit chain appeared correctly in `/seller/products`; a price-list-item import correctly changed the **buyer-visible effective price** for the assigned customer, verified via `resolveEffectivePrice` directly and via the buyer catalog page showing 45.50 MKD). Verified the audit trail: one summary `AuditLogEntry` (`entityType: "Import"`) plus per-row `Category`/`Product`/`Customer` entries, all correlated by the same batch id, and the existing Audit Log page's entity-type filter picked up "Import" with no code changes needed. Verified invalid-CSV error UX (a missing reference shows a specific, human-readable row error; a malformed row shows its own "expected N columns, found M" error; the confirm button and summary never claim success when rows are rejected). Verified a buyer session is redirected away from both `/seller/imports` and `/seller/imports/customers` (same `requireSellerSession()` guard as every other seller page - not a separate mechanism). Verified at 375px, 768px, and desktop - see §16 for a real bug this surfaced at 768px and its fix.
 - **Environment note specific to this session**: manual verification used `next build && next start` on an auto-assigned port (not `next dev` on 3000), because another session was holding both the port and `next dev`'s single-instance-per-directory lock. This required temporarily setting `AUTH_TRUST_HOST=true` in `.env.local` (Auth.js otherwise rejects a non-configured host in production mode) - reverted before finishing. Worth knowing if a future session hits the same `UntrustedHost` Auth.js error while doing production-mode verification on a non-default port.
+
+- **Phase 1F-B1**: same `next build && next start` on an alternate port workaround as Phase 1F-A's own session (another session again held `next dev`'s lock on 3000), with `AUTH_TRUST_HOST=true` set temporarily and reverted afterward, and three temporary accounts (`sales-rep@alpha.test`, `warehouse@alpha.test`, `driver@alpha.test`) added to the Alpha tenant for the session and removed again via `npm run db:seed` before finishing - none of this is committed. Signed in as each of the four roles in turn:
+  - **Delivery Driver**: dashboard showed only Ready/Out for delivery/Delivered counts; nav showed only Dashboard/Orders/Back to site; the orders list's status filter offered only those three statuses and correctly showed "No orders yet" (the seed's sample order is `SUBMITTED`, outside scope); navigating directly to that order's URL returned the app's real 404 page, not a redirect or a data leak; navigating directly to `/seller/customers` redirected to the dashboard.
+  - **Sales Rep**: dashboard showed the full pipeline minus the active-customers/active-products cards; nav showed Categories/Units/Products/Customers/Price Lists/Orders but not Audit/Imports/Exports; the customers list showed no "Add new" button and an "Edit" link (not "View"); a customer's edit page showed name/code as plain text, contact email/phone/notes as an editable form with the "you can update contact details..." notice, addresses with a working "Add new" and no deactivate toggle, price list & discount as read-only text ("Standard" / "—"), and the product-visibility table with no action column; navigating directly to `/seller/orders/new` was reachable (Sales Rep has `orders:create`).
+  - **Warehouse Worker**: dashboard showed only Confirmed/Picking/Ready counts and no recent orders (the sample order is `SUBMITTED`, outside scope); nav showed only Categories/Units/Products/Orders; a product's edit page rendered every field with the read-only notice, and typing into the Name field while signed in as this role was confirmed via `document.getElementById(...).value` to leave the stored value unchanged - `inert` genuinely blocks input, not just styling; navigating directly to `/seller/orders/new` redirected to the dashboard.
+  - **Seller Admin regression pass**: dashboard, nav (all items including Audit/Imports/Exports), and the full customer-edit form were confirmed unchanged from Phase 1F-A.
 
 ## 8. Cart architecture (Phase 1C, unchanged by Phase 1D)
 
@@ -270,16 +282,76 @@ Reported after a manual review: at 768px, the Imports wizard's results table (`m
 
 During Phase 1F-A's manual browser verification, `.env.local` (containing the `b2b_orders_app` and `b2b_orders_migrator` Postgres role passwords) was read via a file-read tool and its contents appeared in that session's tool-call output/transcript. This was a mistake - credentials should never have been read and displayed that way, and the user flagged it immediately when it first started to happen. These are local-development-only credentials, not used anywhere else, and nothing in the application or its git history depends on the specific values. **Before this project is ever pointed at a shared, pilot, or production database, both Postgres role passwords must be rotated** (`ALTER ROLE ... PASSWORD ...`, then update `.env.local`'s `DATABASE_URL`/`MIGRATE_DATABASE_URL` accordingly - see [prisma/rls/README.md](../prisma/rls/README.md) for what each role is for). This is a credential-hygiene action item, not a code defect - no source file, migration, or committed content contains a credential.
 
-## 18. Proposed Phase 1F-B scope (not started, pending approval)
+## 18. Phase 1F-B1: role separation and authorization
 
-Per [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) and [MVP_SCOPE.md](MVP_SCOPE.md), unchanged by Phase 1F-A (CSV import was the last unchecked pilot-hardening item from Phase 1E's list, so 1F-A closes that out rather than adding to 1F-B):
+Phase 1F-B1 (commit `223c64f`) picked up the first item from Phase 1F-A's own proposed-next-steps list: Sales Rep / Warehouse Worker / Delivery Driver role separation. Scope, approved in three rounds before any code was written (initial matrix proposal → clarifications on Delivery Driver scope, Sales Rep limited edit, and read-only UI → final sign-off): centralize authorization so every seller page, Server Action, and API route enforces a role-appropriate capability server-side, with UI hiding as cosmetic only. **No schema change, no migration, no RLS change** - role trust is layered on top of the existing session at the same trust level `tenantId` already has (see docs/SECURITY_AND_MULTI_TENANCY.md §3's Layer 4).
 
-- Sales Rep / Warehouse Worker / Delivery Driver role separation (the membership model already supports adding a `TenantRole` without a schema change - see [DATABASE_DESIGN.md](DATABASE_DESIGN.md) §4; `TenantRole` already has all four values, only the permissions matrix + UI differentiation is missing). This would also be the natural place to resolve Phase 1E's open question of whether `SALES_REP`/`WAREHOUSE_WORKER`/`DELIVERY_DRIVER` should be restricted from `/seller/audit`, `/seller/exports`, and now `/seller/imports` (today any active `TenantMembership` can reach all three, same as every other seller page).
-- Dashboard enhancements beyond Phase 1E's pipeline-counts version: top products, date-range filtering, today's/this week's value - the underlying order data already exists via `listOrdersForTenantPage`/`listOrderActivity`.
+**Centralized architecture** (`src/lib/auth/permissions.ts`): a single `Capability` union type, one `ROLE_CAPABILITIES: Record<TenantRole, ReadonlySet<Capability>>` table (the matrix below, and the only place it's encoded), and three enforcement helpers built on it:
+- `requireSellerCapability(session, capability)` - pages; redirects to `/seller` on failure, the same pattern `requireSellerSession()` itself already uses.
+- `checkActionCapability(session, capability)` - Server Actions; returns a ready-made `FormState` error instead of throwing, since every action already returns `FormState` on every other failure path.
+- `requireApiCapability(session, capability)` - API routes; returns a 403 `Response` (`const denied = requireApiCapability(...); if (denied) return denied;`).
+
+No page, action, or route hand-rolls an `if (session.role === ...)` check - every one of the ~65 call sites calls one of these three helpers against the one table.
+
+**Final approved capability matrix**:
+
+| Capability | Seller Admin | Sales Rep | Warehouse Worker | Delivery Driver |
+|---|---|---|---|---|
+| `catalog:read` | ✅ | ✅ | ✅ | ❌ |
+| `catalog:write` | ✅ | ❌ | ❌ | ❌ |
+| `customers:read` | ✅ | ✅ | ❌ | ❌ |
+| `customers:write:limited` (contactEmail/contactPhone/notes only) | — | ✅ | ❌ | ❌ |
+| `customers:write:full` | ✅ | ❌ | ❌ | ❌ |
+| `customers:activate` | ✅ | ❌ | ❌ | ❌ |
+| `customers:addresses:write` (create/update) | ✅ | ✅ | ❌ | ❌ |
+| `customers:addresses:deactivate` | ✅ | ❌ | ❌ | ❌ |
+| `pricing:read` | ✅ | ✅ | ❌ | ❌ |
+| `pricing:write` | ✅ | ❌ | ❌ | ❌ |
+| `customer-visibility:write` | ✅ | ❌ | ❌ | ❌ |
+| `orders:read:all` | ✅ | ✅ | — | — |
+| `orders:read:fulfillment` (CONFIRMED/PICKING/READY only) | — | — | ✅ | — |
+| `orders:read:delivery` (READY/OUT_FOR_DELIVERY/DELIVERED only) | — | — | — | ✅ |
+| `orders:create` | ✅ | ✅ | ❌ | ❌ |
+| `orders:confirm` (SUBMITTED→CONFIRMED, qty/reason) | ✅ | ✅ | ❌ | ❌ |
+| `orders:advance:PICKING` | ✅ | ❌ | ✅ | ❌ |
+| `orders:advance:READY` | ✅ | ❌ | ✅ | ❌ |
+| `orders:advance:OUT_FOR_DELIVERY` | ✅ | ❌ | ❌ | ✅ |
+| `orders:advance:DELIVERED` | ✅ | ❌ | ❌ | ✅ |
+| `audit:read` | ✅ | ❌ | ❌ | ❌ |
+| `exports:read` | ✅ | ❌ | ❌ | ❌ |
+| `imports:manage` | ✅ | ❌ | ❌ | ❌ |
+
+This resolves Phase 1E's open question directly: `/seller/audit`, `/seller/exports`, and `/seller/imports` (plus its API routes) are now Seller Admin only, not reachable by any active membership as before.
+
+**Order-read scoping, enforced at the data layer, not just the UI** (`getOrderForTenant`/`listOrdersForTenant(Page)` in `src/lib/domain/orders/order-service.ts`, gated by `orderReadStatusScopeFor(role)` in `permissions.ts`):
+- **Seller Admin / Sales Rep**: all tenant orders, every status (`orders:read:all`, unrestricted).
+- **Warehouse Worker**: `CONFIRMED` / `PICKING` / `READY` only (`orders:read:fulfillment`).
+- **Delivery Driver**: `READY` / `OUT_FOR_DELIVERY` / `DELIVERED` only (`orders:read:delivery`).
+
+An order outside a restricted role's scope comes back `null` from `getOrderForTenant` - **indistinguishable from a cross-tenant order**, so a direct URL guess for an order outside scope 404s exactly like one belonging to another tenant, rather than redirecting or otherwise revealing the order exists. `listOrdersForTenant`'s new `statusIn` filter scopes the whole inbox list the same way; the order list's own status-dropdown is narrowed to only the statuses a role can actually see, and an explicit dropdown selection outside that scope returns zero rows rather than widening it. Per the approved decision, **per-driver assignment (`assignedDriverUserId` or similar) was explicitly not built** - Delivery Driver's scope is status-based only, tenant-wide within those three statuses; a driver sees every order in READY/OUT_FOR_DELIVERY/DELIVERED, not just "their own." This remains future scope - see §19.
+
+**Sales Rep's "limited edit" of a customer** is a genuinely separate code path, not the admin form with fields disabled: a new `customerContactInfoInputSchema` (`src/lib/validation/customers.ts`, contactEmail/contactPhone/notes only) feeds a new `updateCustomerContactInfo` (`src/lib/domain/customers/customer-service.ts`) that writes only those three columns regardless of what's posted - the same "domain layer re-checks, not just the form" defense-in-depth pattern `confirmOrder`'s negative-quantity check already established. `updateCustomerAction` branches on capability (`customers:write:full` → the existing full form/`updateCustomer`; `customers:write:limited` → the new `CustomerContactInfoForm` component/`updateCustomerContactInfo`). Address create/update is granted to Sales Rep (needed operationally when entering orders); address deactivation stays Admin-only, matching customer activation - there is no hard-delete action on addresses today, only the existing soft `isActive` toggle, so that's the only "destructive" address action there was to gate.
+
+**Read-only rendering for read-but-not-write roles**: every catalog/customer/pricing/address form gained a `readOnly` prop that sets the native `inert` attribute on the `<form>` and hides the submit button, plus a notice banner. `inert` was verified live in the browser to actually reject input (typing into a field while signed in as a read-only role left the DOM value unchanged), not just apply disabled styling. List pages hide "Add new"/toggle-active controls and swap the row action link's label between "Edit" and "View" by capability; write-only routes (`/new` pages, price-list item edit) redirect a non-writer via `requireSellerCapability` before rendering anything. The customer edit page's pricing section renders as plain text (assigned price list name, discount %) for `pricing:read`-only sessions instead of the interactive assignment/discount forms; the product-visibility table drops its action column entirely for anyone without `customer-visibility:write`.
+
+**Dashboard** (`src/app/[locale]/seller/page.tsx`): reuses the existing `getDashboardMetrics()` query completely unchanged (no new queries, per the approved scope) - only which pipeline cards, recent orders, and quick-links render varies by role. Seller Admin keeps the full dashboard; Sales Rep gets the full pipeline minus the active-customers/active-products cards and catalog-management quick-links; Warehouse Worker sees only Confirmed/Picking/Ready counts; Delivery Driver sees only Ready/Out for delivery/Delivered counts. The recent-orders list is filtered through the same `orderReadStatusScopeFor` used everywhere else, so Warehouse/Driver dashboards never surface an order their own order-list/detail pages would 404 on. Explicitly **not** built: top products, date-range filtering, or any other Phase 1F-B2 dashboard enhancement (§19) - this reuses existing data only.
+
+**Nav** (`src/app/[locale]/seller/layout.tsx`): link visibility is capability-driven but explicitly documented in the code as cosmetic only, since every linked page enforces its own capability regardless of whether the link is shown.
+
+**Tests**: 418 passing (up from 317; 101 new - see §5), including a 95-assertion exhaustive check of every matrix cell, order-read-scope tests (a restricted role's `getOrderForTenant` returns `null` for an out-of-scope status; `statusIn` scoping; an explicit filter outside scope yields zero rows, not a widened result), and `updateCustomerContactInfo`'s narrow-write guarantee. `npm run lint`, `npm run typecheck`, `npm run build`, and `prisma validate`/`prisma generate` are all clean as of `223c64f`.
+
+**Browser verification**: see §7 - all four roles signed in and checked live (dashboard content, nav visibility, direct-URL blocking, order scoping, genuinely-non-interactive read-only forms, Sales Rep's limited edit), plus a Seller Admin regression pass.
+
+## 19. Proposed Phase 1F-B2 scope (not started, pending approval)
+
+Per [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) and [MVP_SCOPE.md](MVP_SCOPE.md), unchanged by Phase 1F-B1 except that role separation (formerly listed here) is now done - see §18:
+
+- Dashboard enhancements beyond the current pipeline-counts version: top products, date-range filtering, today's/this week's value - the underlying order data already exists via `listOrdersForTenantPage`/`listOrderActivity`.
 - Org-switcher UI for a user holding more than one active membership (Phase 2 per [ARCHITECTURE.md](ARCHITECTURE.md) §3 and [DATABASE_DESIGN.md](DATABASE_DESIGN.md) §4's session/active-context section) - still not built; MVP auto-selects the first membership found.
 - Error tracking/observability wired up in production (an actual external vendor this time - Phase 1E's structured logger, extended in Phase 1F-A's import auditing, is the local groundwork for this, deliberately vendor-free until now).
 - CSV import at volumes well beyond pilot scale, if real usage ever warrants it: batching Phase 1F-A's per-row reference-resolution queries (§15) into per-file batched lookups. Not needed today - explicitly deferred, not a known bug.
+- **Delivery Driver per-order assignment** (§18): a new `Order.assignedDriverUserId` (or equivalent join) so a driver sees only orders assigned to them, not every tenant order in READY/OUT_FOR_DELIVERY/DELIVERED. Explicitly deferred in 1F-B1 as a real schema change needing its own explicit approval, separate from the rest of the authorization work - not started, no field added.
 
-Explicitly **not** proposed for Phase 1F-B per the standing constraints repeated in every phase brief so far: order CSV import, inventory/stock reservation, route optimization, proof-of-delivery uploads, invoicing/accounting, ERP integration, credit-limit *enforcement*, Excel `.xlsx` import, background job infrastructure, and no weakening of the RLS/auth architecture described in §2.
+Explicitly **not** proposed for Phase 1F-B2 per the standing constraints repeated in every phase brief so far: order CSV import, inventory/stock reservation, route optimization, proof-of-delivery uploads, invoicing/accounting, ERP integration, credit-limit *enforcement*, Excel `.xlsx` import, background job infrastructure, and no weakening of the RLS/auth architecture described in §2 or the role-authorization architecture described in §18.
 
-**Do not start Phase 1F-B without explicit approval** - this file is a status snapshot only.
+**Do not start Phase 1F-B2 without explicit approval** - this file is a status snapshot only.
