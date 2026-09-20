@@ -2,7 +2,7 @@
 
 Snapshot of where this project stands, for picking work back up in a new session. See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the original phase plan this has been following, and the other `docs/` files for the underlying architecture decisions — this file is a status snapshot, not a replacement for them.
 
-## Status: Phase 0, Phase 1A, Phase 1B, Phase 1C, and Phase 1D complete and committed
+## Status: Phase 0, Phase 1A, Phase 1B, Phase 1C, Phase 1D, and Phase 1E complete and committed
 
 | Phase | Scope | Commit |
 |---|---|---|
@@ -11,10 +11,11 @@ Snapshot of where this project stands, for picking work back up in a new session
 | Phase 1B | Seller customers & pricing - customers, addresses, price lists, assignment, discount, visibility | `3678f95` |
 | Phase 1C | Buyer catalog, cart, and order submission | `82032d7` |
 | Phase 1D | Seller order review, fulfillment, and status flow | `ce59c69` |
+| Phase 1E | Pilot hardening - audit log UI, order activity timeline, CSV export, dashboard metrics, platform diagnostics, structured logging, pagination | `df0c1da` |
 
-**Latest commit: `ce59c69`** on `main`. Working tree is clean. Nothing has been pushed to a remote (none is configured) - all work is local-only, per every phase's instructions so far.
+**Latest commit: `df0c1da`** on `main`. Working tree is clean. Nothing has been pushed to a remote (none is configured) - all work is local-only, per every phase's instructions so far.
 
-**Phase 1E has not been started.** See §14 below for its proposed options, pending approval.
+**Phase 1F has not been started.** See §15 below for its proposed scope (1F-A and 1F-B), pending approval.
 
 ## 1. Migrations (applied, in order)
 
@@ -24,7 +25,7 @@ Snapshot of where this project stands, for picking work back up in a new session
 4. `20260920002706_add_user_context_membership_read_exemption` - RLS fix: `app.current_user_id` read-only exemption on TenantMembership/CustomerMembership (see §3 and §7)
 5. `20260920004502_customer_pricing_fields` - Phase 1B: `Customer.code/contactEmail/contactPhone/notes`, `CustomerAddress.phone`, `PriceList.code/description/isActive`
 
-**Phase 1C added no migration** - see §9 for what it reused as-is. **Phase 1D added no migration either**: `OrderLine.confirmedQty`/`deliveredQty`/`unavailableReason`, every `OrderStatus` value (`PICKING`/`READY`/`OUT_FOR_DELIVERY`/`DELIVERED` included), `Order.confirmedAt`/`deliveredAt`, and `AuditLogEntry.fieldName` all already existed in the schema from Phase 0. The only gap was that the shared `writeAuditLogEntry` helper (`src/lib/domain/audit/audit-log.ts`) never actually passed `fieldName` through to the database - Phase 1D's first genuinely field-level audit entry (a seller adjusting one `OrderLine.confirmedQty`) is what surfaced this, and it was a one-line wiring fix to existing code, not a schema change.
+**Phase 1C added no migration** - see §9 for what it reused as-is. **Phase 1D added no migration either**: `OrderLine.confirmedQty`/`deliveredQty`/`unavailableReason`, every `OrderStatus` value (`PICKING`/`READY`/`OUT_FOR_DELIVERY`/`DELIVERED` included), `Order.confirmedAt`/`deliveredAt`, and `AuditLogEntry.fieldName` all already existed in the schema from Phase 0. The only gap was that the shared `writeAuditLogEntry` helper (`src/lib/domain/audit/audit-log.ts`) never actually passed `fieldName` through to the database - Phase 1D's first genuinely field-level audit entry (a seller adjusting one `OrderLine.confirmedQty`) is what surfaced this, and it was a one-line wiring fix to existing code, not a schema change. **Phase 1E added no migration either** - every screen it built (audit log UI, order activity timeline, CSV export, dashboard metrics) is a pure read against tables/columns that already existed; see §14 for the full rundown.
 
 All migrations were generated via `prisma migrate diff` + manually placed migration folders and applied via `prisma migrate deploy`, **not** `prisma migrate dev` - that command refuses to run non-interactively in this environment whenever there's any warning to confirm (even a harmless one), which is every migration so far. See [prisma/rls/README.md](../prisma/rls/README.md) and this file's own migration folders for the exact workflow if another migration is needed.
 
@@ -69,7 +70,15 @@ The buyer catalog silently excludes any `ProductUnit` this function reports unav
 
 ## 5. Test status
 
-**205 tests passing, 0 failing** (up from 165 at the end of Phase 1C; **40 new tests** added in Phase 1D), across 23 files (`npm test`):
+**232 tests passing, 0 failing** (up from 205 at the end of Phase 1D; **27 new tests** added in Phase 1E), across 29 files (`npm test`):
+- **`tests/seller/audit-log-isolation.test.ts`** (Phase 1E) - `listAuditLogEntries`/`listAuditLogActors` never return another tenant's rows (application path); an RLS-only test bypassing Layer 2 entirely proves the same at the database level; a zero-tenant-context RLS query returns zero rows.
+- **`tests/seller/export-isolation.test.ts`** (Phase 1E) - each of the five CSV export types (customers, products, price lists, orders, order lines) is proven not to contain another tenant's data; each export is proven to write its own tenant-scoped `AuditLogEntry` (`entityType: "Export"`).
+- **`tests/seller/order-activity.test.ts`** (Phase 1E) - the order activity timeline returns creation/confirmation/status-advance events in chronological order with nothing synthesized beyond what's in `AuditLogEntry`; throws (rather than leaking) for an order belonging to a different tenant.
+- **`tests/admin/diagnostics.test.ts`** (Phase 1E) - the diagnostics report never serializes `DATABASE_URL`, `AUTH_SECRET`, or a raw `postgres://` connection string; reports DB connectivity/latency and migration state; configuration checks are booleans only.
+- **`tests/unit/csv.test.ts`** (Phase 1E) - CSV escaping (commas/quotes/newlines), null/undefined rendering, Date/boolean formatting.
+- **`tests/unit/pagination.test.ts`** (Phase 1E) - page/pageSize clamping (including the `MAX_PAGE_SIZE` ceiling), search-term trimming/length-capping, `totalPages` computation.
+
+Unchanged from Phase 0-1D, still green:
 - `tests/isolation/`, `tests/auth/`, `tests/catalog/`, `tests/pricing/`, `tests/unit/catalog-validation.test.ts`, `tests/unit/pricing-validation.test.ts` - unchanged from Phase 0-1B, still green.
 - `tests/unit/cutoff.test.ts`, `tests/unit/order-totals.test.ts`, `tests/unit/order-validation.test.ts`, `tests/buyer/*` - Phase 1C, still green (see the Phase 1C section of this file's git history for details).
 - **`tests/unit/order-status-machine.test.ts`** (Phase 1D) - the full transition matrix: the documented forward path, cancellation only from `SUBMITTED`, no skipping a stage, no backward transition ever, `DELIVERED`/`CANCELLED` fully terminal, `DRAFT` has no modeled outgoing transition.
@@ -82,11 +91,11 @@ Run with `npm test`. Vitest is configured with `fileParallelism: false` (`vitest
 
 ## 6. Production build status
 
-`npm run build` succeeds cleanly (Next.js 16, Turbopack) as of `ce59c69`. 43 routes generated - the 39 from Phase 0-1C plus 3 new seller order routes (`/[locale]/seller/orders`, `/seller/orders/[id]`, `/seller/orders/new`) plus one new dynamic segment counted separately by the build output. `npm run lint`, `npm run typecheck`, and `prisma validate`/`prisma generate` are all clean (zero warnings, zero errors) as of the same commit. The build output still correctly shows `ƒ Proxy (Middleware)`, confirming the Phase 1C `middleware.ts`→`proxy.ts` fix remains in effect.
+`npm run build` succeeds cleanly (Next.js 16, Turbopack) as of `df0c1da`. Route count grew from 43 (end of Phase 1D) to include Phase 1E's `/[locale]/seller/audit`, `/[locale]/seller/exports`, `/[locale]/admin/diagnostics` (plus its `admin` layout), and five `/api/seller/export/*` Route Handlers (`customers`, `products`, `price-lists`, `orders`, `order-lines`). `npm run lint`, `npm run typecheck`, and `prisma validate`/`prisma generate` are all clean (zero warnings, zero errors) as of the same commit. The build output still correctly shows `ƒ Proxy (Middleware)`, confirming the Phase 1C `middleware.ts`→`proxy.ts` fix remains in effect.
 
 ## 7. Browser verification status
 
-Manually verified end-to-end in the built-in browser pane (not just automated tests) for every phase through **Phase 1D**, at mobile, tablet, and desktop widths:
+Manually verified end-to-end in the built-in browser pane (not just automated tests) for every phase through **Phase 1E**, at mobile, tablet, and desktop widths:
 
 - Phase 0-1C verification: see this file's earlier revisions (sign-in, catalog/customer/pricing CRUD, buyer catalog/cart/checkout/order-history/cancellation, cross-role route protection) - all still holds; nothing in Phase 1D touched that code.
 - **Phase 1D, signed in as the seeded seller admin (`seller-admin@alpha.test`)**: order inbox shows the seed's sample order with a colored status badge; opened its detail page (customer, line items, submitted totals); reduced the confirmed quantity on that line from 5 to 3 with a required reason and confirmed the order - the page immediately showed `Потврдена` (Confirmed), the line's requested/confirmed/unavailable quantities (5/3/2), **and both submitted totals (590.00, unchanged) and confirmed totals (354.00) side by side**; advanced the order through `PICKING → READY → OUT_FOR_DELIVERY → DELIVERED` one button at a time, each transition correctly showing only the next legal action; the order list afterward showed the final `Доставена` (Delivered) status and the confirmed total.
@@ -95,6 +104,11 @@ Manually verified end-to-end in the built-in browser pane (not just automated te
 - Mobile sanity check: the order inbox, order detail with the confirm form, and the seller-entered-order catalog/basket all remain readable and usable at 375px width (tables scroll horizontally where needed rather than clipping).
 
 Two recurring environment quirks worth knowing about for future browser testing sessions, both **tooling artifacts, not application bugs**: (1) Next.js's dev-mode indicator badge can overlap a small-viewport submit button - click an offset position or use a wider viewport; (2) this session's browser-automation tool occasionally returned a **stale accessibility-tree/page-text snapshot** relative to what had actually just rendered (most visibly right after a login or status-change submission), which caused a couple of misdirected clicks (e.g., a second click landing on a "Sign out" link that had just appeared where a "Sign in" button used to be). Always take a fresh screenshot immediately before a coordinate-based click rather than reusing one from an earlier tool call.
+
+- **Phase 1E, signed in as `seller-admin@alpha.test`**: confirmed the seed's sample order with a partial quantity (5 → 3) and a reason, then advanced it to `PICKING` - the order detail page's new Activity section showed both events (the quantity adjustment with its reason, and the status change) in chronological order immediately, with nothing pre-existing shown for the order's own `CREATE` (the seed script writes orders via a raw Prisma call, not `submitOrder`, so it never had an audit entry - the timeline correctly showed nothing invented for that gap). The seller Audit Log page showed the same events with working date-range/actor/entity-type/action filters and correctly resolved entity references (`Order #1`, `Order #1 - Alpha Widget`). The Exports page's "Orders" download returned a CSV with the correct `submittedTotal`/`confirmedTotal` split (590/354) and the right headers/filename. The Dashboard showed live pipeline counts matching the order's actual status.
+- **Diagnostics authorization, all three session types**: `seller-admin@alpha.test` and `buyer-one@alpha.test` were both redirected to `/` when navigating directly to `/admin/diagnostics`; `platform-admin@b2b-orders.test` saw the full report (DB connected, latency in ms, migration count/name/date, both config checks `true`) and was itself redirected to `/` when navigating to `/seller/audit`.
+- **Responsive check**: audit log filters/table and the exports page were verified at tablet (768px) and mobile (375px) widths - the filter form wraps, the table scrolls horizontally rather than clipping, and the dashboard's metric cards reflow from a 4-column to a 2-column grid.
+- New environment note for this session: running `npm test` calls each test file's own `resetDatabase()`, which wipes whatever `npm run db:seed` had just put in the dev database - re-run `npm run db:seed` after the test suite (not just before it) if a browser-verification pass follows a test run in the same session, or sign-in will fail with "Invalid email or password" against accounts that no longer exist.
 
 ## 8. Cart architecture (Phase 1C, unchanged by Phase 1D)
 
@@ -172,21 +186,45 @@ The buyer still sees the order normally in their own order history/detail (custo
 
 **Deliberately not a `Notification` database table**: per the Phase 1D brief's explicit instruction not to integrate any external channel yet, and because a `Notification` row would need its own tenant/customer scoping and RLS policy for something nothing in this phase reads back. The actual operationally-meaningful record of "what happened and why" is already `AuditLogEntry` (§2), which every one of these same call sites already writes in the same transaction as the change. `order-events.ts` exists purely so a future real notification provider (email/SMS/push) has exactly one place to subscribe (`onOrderEvent`), instead of needing to be wired into every order-mutating call site individually.
 
-## 14. Proposed Phase 1E options (not started, pending approval)
+## 14. Phase 1E: pilot hardening
 
-Per [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md), two candidate directions, not mutually exclusive:
+Phase 1E (commit `df0c1da`) picked up Option A from the previous revision of this file's "Proposed Phase 1E options" section (pilot hardening), plus the dashboard-metrics item from Option B. Scope: prepare the app for a real pilot with 1-3 seller tenants by improving operational visibility, auditability, exports, diagnostics, and production-readiness - **no new business modules, no schema change**.
 
-**Option A - Phase 4: Pilot hardening**
-- Audit log UI: a read-only view for a Seller Admin of their own tenant's history (order status changes, line adjustments, price/visibility changes) - the data has been captured correctly since Phase 0/1D, there is no UI to read it back yet.
-- CSV export (orders, customers).
-- Error tracking/observability wired up in production.
-- Load-test the catalog browse path against a realistic SKU count.
+**Auth documentation reconciliation, done first per the brief.** [SECURITY_AND_MULTI_TENANCY.md](SECURITY_AND_MULTI_TENANCY.md) §5 and [ARCHITECTURE.md](ARCHITECTURE.md) previously still described the original "database-backed sessions" design, even though `src/lib/auth/auth.ts` had documented the actual JWT-with-per-request-re-resolution implementation since Phase 0 (Auth.js's Credentials provider hard-requires JWT sessions - there is no supported way around it). The docs were corrected to match the working implementation; **no auth code changed**.
 
-**Option B - deferred Phase 1 items, per [MVP_SCOPE.md](MVP_SCOPE.md)**
-- CSV import for products and customers.
-- Sales Rep / Warehouse Worker / Delivery Driver role separation (the membership model already supports adding a `TenantRole` without a schema change - see [DATABASE_DESIGN.md](DATABASE_DESIGN.md) §4).
-- Basic seller dashboard: order counts by status, today's/this week's count and value, top products (mentioned in the original Phase 1D brief context but not built - order data to power it already exists via `listOrdersForTenant`).
+**Audit log UI** (`src/lib/domain/audit/audit-query-service.ts`, `/seller/audit`): a read-only, tenant-scoped, paginated view of `AuditLogEntry`, filterable by date range, actor, entity type, and action. Entity references (which order/customer/product an entry is about) are resolved to a human-readable label via a handful of batched queries per page - not one query per row - and only within the same tenant-scoped transaction, so a resolved reference can never leak another tenant's row. The append-only write path (`audit-log.ts`) is untouched; nothing in the application can edit or delete an entry.
 
-Explicitly **not** proposed for Phase 1E per the standing constraints repeated in every phase brief so far: inventory/stock reservation, route optimization, proof-of-delivery uploads, external notifications, invoicing/accounting, ERP integration, credit-limit blocking, and no weakening of the RLS/auth architecture described in §2.
+**Order activity timeline** (`src/lib/domain/orders/order-activity-service.ts`, on the seller order detail page): a human-readable history built **entirely from persisted `AuditLogEntry` rows** for that order and its lines - creation, quantity adjustments (with reason), every status transition, cancellation. Deliberately invents nothing: an order created by the seed script's raw Prisma call (not `submitOrder`) correctly shows no creation event, because none was ever written.
 
-**Do not start Phase 1E without explicit approval** - this file is a status snapshot only.
+**CSV export** (`src/lib/domain/export/export-service.ts` + `/api/seller/export/{customers,products,price-lists,orders,order-lines}`, linked from `/seller/exports`): each export is tenant-scoped, UTF-8 with a BOM (so Excel renders Cyrillic names correctly), capped at 20,000 rows (`EXPORT_ROW_CAP`, with an `X-Export-Truncated` response header if hit), and writes its own `AuditLogEntry` (`entityType: "Export"`) in the same transaction as the read. Orders/order-lines exports include `submittedTotal` and `confirmedTotal` computed the same way the order detail page does. CSV **import** was explicitly out of scope.
+
+**Dashboard metrics** (`src/lib/domain/dashboard/dashboard-service.ts`, `/seller`): order-status pipeline counts (one `groupBy`), active customer/product-unit counts, and the 10 most recent orders - a fixed, small number of queries regardless of tenant size, no background aggregation job.
+
+**Platform diagnostics** (`src/lib/auth/require-platform-admin.ts`, `src/lib/domain/diagnostics/diagnostics-service.ts`, `/admin/diagnostics`): a new Layer 4 guard (`requirePlatformAdminSession`, mirroring `requireSellerSession`/`requireBuyerSession`) restricts this to `isPlatformAdmin` sessions only - verified live that a seller admin and a buyer are both redirected to `/`. Reports app status, environment, app version (read from `package.json`), git commit (from a `GIT_COMMIT_SHA`/`VERCEL_GIT_COMMIT_SHA`/`SOURCE_VERSION` env var, `"unknown"` if unset - never shells out to `git`), database connectivity/latency (`SELECT 1`), migration state (name/count/date from `_prisma_migrations`, which the app's low-privilege role can read via the existing `GRANT ... ON ALL TABLES`), and two boolean-only configuration checks (`DATABASE_URL`/`AUTH_SECRET` configured or not). **Never returns a connection string, secret, token, or raw environment variable** - covered by `tests/admin/diagnostics.test.ts`, which asserts the serialized report never contains the actual `DATABASE_URL`/`AUTH_SECRET` values or a `postgres://` pattern.
+
+**Structured logging and error handling**: `src/lib/logging/logger.ts` is a minimal `{level, message, timestamp, ...metadata}` JSON-line logger - no external vendor, per the brief. `order-events.ts`'s two `console.log`/`console.error` calls (§13) now go through it. A new `route-error-boundary.tsx` component backs `error.tsx` files under `seller/`, `buyer/`, and `admin/`, showing a friendly message plus the Next.js-generated `digest` (never a stack trace or raw error message - Next.js already redacts Server Component error messages in production) with a retry button. **Naming note for this Next.js build specifically**: the error boundary's recovery callback prop is `retry`, not the `reset` name from older Next.js versions - confirmed against `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/error.md` per this repo's `AGENTS.md` instruction to check the pinned docs before writing new code, since this checkout has Next.js 16-era breaking changes.
+
+**Pagination**: `src/lib/pagination.ts` provides shared `clampPage`/`clampPageSize` (ceiling `MAX_PAGE_SIZE = 100`)/`clampSearchTerm` (ceiling `MAX_SEARCH_TERM_LENGTH = 200`) helpers. New `listOrdersForTenantPage`/`listCustomersPage`/`listProductsPage` domain functions (server-side `skip`/`take` + `count`) back the orders/customers/products list pages and the audit log page. The original unpaginated `listOrdersForTenant`/`listCustomers`/`listProducts` were **left unchanged** for their other callers (tests, the seller-entered-order customer dropdown) rather than changed in place, to avoid touching working, tested code that doesn't need pagination.
+
+**Performance review finding (no migration needed)**: `AuditLogEntry`'s existing indexes - `(tenantId, entityType, entityId)` and `(tenantId, createdAt)` - are adequate for the audit log UI's queries at pilot scale (1-3 tenants). Filtering by `actorUserId` or `action` alone isn't separately indexed; this is a deliberate non-issue for now, not an oversight - if audit volume grows well past pilot scale, `(tenantId, actorUserId)` and `(tenantId, action)` would be the first candidates, added then with a real migration, not preemptively.
+
+**Tests**: 232 passing (up from 205; 27 new - see §5), covering tenant isolation for the audit log and all five export types (including RLS-only bypass tests), the activity timeline's chronological-and-nothing-invented behavior, CSV escaping, pagination clamping, and the diagnostics report's no-secrets guarantee. `npm run lint`, `npm run typecheck`, `npm run build`, and `prisma validate`/`prisma generate` are all clean as of `df0c1da`.
+
+## 15. Proposed Phase 1F scope (not started, pending approval)
+
+Per [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) and the pilot-hardening items Phase 1E didn't cover, two candidate directions, not mutually exclusive:
+
+**Phase 1F-A - remaining pilot-hardening / production-readiness**
+- CSV **import** for products and customers (explicitly deferred from Phase 1E) - reusing the same `zod`-validated domain layer as manual entry, per [SECURITY_AND_MULTI_TENANCY.md](SECURITY_AND_MULTI_TENANCY.md) §8.
+- Error tracking/observability wired up in production (an actual external vendor this time - Phase 1E's structured logger is the local groundwork for this, deliberately vendor-free until now).
+- Load-test the catalog browse path against a realistic SKU count, informed by Phase 1E's performance-review note on `AuditLogEntry` indexing (§14) - re-evaluate whether `(tenantId, actorUserId)`/`(tenantId, action)` indexes are actually warranted once there's real volume to measure, rather than guessing now.
+- Granular seller-side access to the Phase 1E audit log/exports/diagnostics-adjacent seller pages - today any active `TenantMembership` (not just `SELLER_ADMIN`) can reach `/seller/audit` and `/seller/exports`, same as every other seller page; whether `SALES_REP`/`WAREHOUSE_WORKER`/`DELIVERY_DRIVER` should be restricted from them is an open question this phase would resolve, likely alongside Phase 1F-B's role separation work rather than before it.
+
+**Phase 1F-B - deferred Phase 1 items, per [MVP_SCOPE.md](MVP_SCOPE.md)**
+- Sales Rep / Warehouse Worker / Delivery Driver role separation (the membership model already supports adding a `TenantRole` without a schema change - see [DATABASE_DESIGN.md](DATABASE_DESIGN.md) §4; `TenantRole` already has all four values, only the permissions matrix + UI differentiation is missing).
+- Dashboard enhancements beyond Phase 1E's pipeline-counts version: top products, date-range filtering, today's/this week's value - the underlying order data already exists via `listOrdersForTenantPage`/`listOrderActivity`.
+- Org-switcher UI for a user holding more than one active membership (Phase 2 per [ARCHITECTURE.md](ARCHITECTURE.md) §3 and [DATABASE_DESIGN.md](DATABASE_DESIGN.md) §4's session/active-context section) - still not built; MVP auto-selects the first membership found.
+
+Explicitly **not** proposed for Phase 1F per the standing constraints repeated in every phase brief so far: inventory/stock reservation, route optimization, proof-of-delivery uploads, invoicing/accounting, ERP integration, credit-limit *enforcement*, and no weakening of the RLS/auth architecture described in §2.
+
+**Do not start Phase 1F without explicit approval** - this file is a status snapshot only.
