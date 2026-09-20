@@ -12,7 +12,7 @@ export class CustomerNotFoundError extends Error {}
  * another customer's addresses even by accident - customerId here is always
  * the session's own, never a route param.
  */
-export function listActiveCustomerAddressesForBuyer(tenantId: string, customerId: string) {
+export function listActiveCustomerAddresses(tenantId: string, customerId: string) {
   return withCustomerContext(tenantId, customerId, (tx) =>
     tx.customerAddress.findMany({
       where: { isActive: true },

@@ -4,7 +4,7 @@ import { withTenantContext } from "@/lib/db/with-tenant";
 import { hashPassword } from "@/lib/auth/password";
 import { DEV_PASSWORD, resetDatabase, seedTenant, type SeededTenant } from "../../prisma/seed";
 import { getOrderForCustomer, listOrdersForCustomer, submitOrder } from "@/lib/domain/orders/order-service";
-import { listActiveCustomerAddressesForBuyer } from "@/lib/domain/customers/customer-address-service";
+import { listActiveCustomerAddresses } from "@/lib/domain/customers/customer-address-service";
 import { listBuyerCatalog } from "@/lib/domain/catalog/buyer-catalog-service";
 
 describe("buyer order history and cross-tenant/customer isolation", () => {
@@ -30,16 +30,16 @@ describe("buyer order history and cross-tenant/customer isolation", () => {
 
     const alphaProductUnit = await withTenantContext(alpha.tenantId, (tx) => tx.productUnit.findFirstOrThrow({}));
 
-    const addressesOne = await listActiveCustomerAddressesForBuyer(alpha.tenantId, alphaCustomerOne);
-    const orderOne = await submitOrder(alpha.tenantId, alphaCustomerOne, alphaBuyerOneUserId, "Buyer One", "BUYER_ADMIN", {
+    const addressesOne = await listActiveCustomerAddresses(alpha.tenantId, alphaCustomerOne);
+    const orderOne = await submitOrder(alpha.tenantId, alphaCustomerOne, alphaBuyerOneUserId, "Buyer One", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressesOne[0].id,
       lines: [{ productUnitId: alphaProductUnit.id, quantity: 1 }],
     });
     if (!orderOne.ok) throw new Error("setup: expected order submission to succeed");
     alphaBuyerOneOrderId = orderOne.order.id;
 
-    const addressesTwo = await listActiveCustomerAddressesForBuyer(alpha.tenantId, alphaCustomerTwo);
-    const orderTwo = await submitOrder(alpha.tenantId, alphaCustomerTwo, alphaBuyerTwoUserId, "Buyer Two", "BUYER_ADMIN", {
+    const addressesTwo = await listActiveCustomerAddresses(alpha.tenantId, alphaCustomerTwo);
+    const orderTwo = await submitOrder(alpha.tenantId, alphaCustomerTwo, alphaBuyerTwoUserId, "Buyer Two", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressesTwo[0].id,
       lines: [{ productUnitId: alphaProductUnit.id, quantity: 1 }],
     });

@@ -4,7 +4,7 @@ import { withTenantContext } from "@/lib/db/with-tenant";
 import { hashPassword } from "@/lib/auth/password";
 import { DEV_PASSWORD, resetDatabase, seedTenant, type SeededTenant } from "../../prisma/seed";
 import { submitOrder } from "@/lib/domain/orders/order-service";
-import { listActiveCustomerAddressesForBuyer } from "@/lib/domain/customers/customer-address-service";
+import { listActiveCustomerAddresses } from "@/lib/domain/customers/customer-address-service";
 import { createCategory } from "@/lib/domain/catalog/category-service";
 import { createProduct, setProductActive } from "@/lib/domain/catalog/product-service";
 import { createProductUnit } from "@/lib/domain/catalog/product-unit-service";
@@ -31,7 +31,7 @@ describe("submitOrder", () => {
     customerId = tenant.customers[0].id;
     buyerUserId = (await prismaBase.user.findUniqueOrThrow({ where: { email: tenant.customers[0].buyerEmail } })).id;
 
-    const addresses = await listActiveCustomerAddressesForBuyer(tenant.tenantId, customerId);
+    const addresses = await listActiveCustomerAddresses(tenant.tenantId, customerId);
     addressId = addresses[0].id;
 
     const seededFixture = await withTenantContext(tenant.tenantId, (tx) =>
@@ -51,7 +51,7 @@ describe("submitOrder", () => {
   it("submits a valid order, snapshotting price/discount/VAT/address and starting SUBMITTED", async () => {
     await setCustomerDiscount(tenant.tenantId, actorUserId, customerId, 10);
 
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       note: "Please deliver in the morning",
       lines: [{ productUnitId: seededProductUnitId, quantity: 2 }],
@@ -77,11 +77,11 @@ describe("submitOrder", () => {
   });
 
   it("allocates sequential order numbers per tenant", async () => {
-    const first = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const first = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       lines: [{ productUnitId: seededProductUnitId, quantity: 1 }],
     });
-    const second = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const second = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       lines: [{ productUnitId: seededProductUnitId, quantity: 1 }],
     });
@@ -93,7 +93,7 @@ describe("submitOrder", () => {
   });
 
   it("rejects submission with an empty cart", async () => {
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       lines: [],
     });
@@ -101,10 +101,10 @@ describe("submitOrder", () => {
   });
 
   it("rejects an address that belongs to a different customer", async () => {
-    const otherCustomerAddresses = await listActiveCustomerAddressesForBuyer(tenant.tenantId, tenant.customers[1].id);
+    const otherCustomerAddresses = await listActiveCustomerAddresses(tenant.tenantId, tenant.customers[1].id);
     const foreignAddressId = otherCustomerAddresses[0].id;
 
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: foreignAddressId,
       lines: [{ productUnitId: seededProductUnitId, quantity: 1 }],
     });
@@ -112,11 +112,11 @@ describe("submitOrder", () => {
   });
 
   it("rejects an address belonging to a different tenant entirely", async () => {
-    const foreignAddresses = await listActiveCustomerAddressesForBuyer(
+    const foreignAddresses = await listActiveCustomerAddresses(
       otherTenant.tenantId,
       otherTenant.customers[0].id
     );
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: foreignAddresses[0].id,
       lines: [{ productUnitId: seededProductUnitId, quantity: 1 }],
     });
@@ -154,7 +154,7 @@ describe("submitOrder", () => {
 
     const ordersBefore = await withTenantContext(tenant.tenantId, (tx) => tx.order.count({ where: { customerId } }));
 
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       lines: [
         { productUnitId: seededProductUnitId, quantity: 1 },
@@ -176,7 +176,7 @@ describe("submitOrder", () => {
   it("rejects a cart line referencing another tenant's product unit as NOT_FOUND", async () => {
     const foreignFixture = await withTenantContext(otherTenant.tenantId, (tx) => tx.productUnit.findFirstOrThrow({}));
 
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       lines: [{ productUnitId: foreignFixture.id, quantity: 1 }],
     });
@@ -199,7 +199,7 @@ describe("submitOrder", () => {
     // item to their (browser-only) cart but before they checked out.
     await updatePriceListItem(tenant.tenantId, actorUserId, item.id, { price: 250 });
 
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       lines: [{ productUnitId: seededProductUnitId, quantity: 1 }],
     });
@@ -222,7 +222,7 @@ describe("submitOrder", () => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       requestedDeliveryDate: tomorrow,
       lines: [{ productUnitId: seededProductUnitId, quantity: 1 }],
@@ -261,7 +261,7 @@ describe("submitOrder", () => {
     await setCustomerPriceListAssignment(tenant.tenantId, actorUserId, inactiveCustomer.id, priceListId);
     await setCustomerActive(tenant.tenantId, actorUserId, inactiveCustomer.id, false);
 
-    const result = await submitOrder(tenant.tenantId, inactiveCustomer.id, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, inactiveCustomer.id, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: inactiveAddress.id,
       lines: [{ productUnitId: seededProductUnitId, quantity: 1 }],
     });

@@ -9,7 +9,7 @@ import {
   requestOrderCancellation,
   submitOrder,
 } from "@/lib/domain/orders/order-service";
-import { listActiveCustomerAddressesForBuyer } from "@/lib/domain/customers/customer-address-service";
+import { listActiveCustomerAddresses } from "@/lib/domain/customers/customer-address-service";
 
 describe("requestOrderCancellation", () => {
   let tenant: SeededTenant;
@@ -25,7 +25,7 @@ describe("requestOrderCancellation", () => {
     customerId = tenant.customers[0].id;
     buyerUserId = (await prismaBase.user.findUniqueOrThrow({ where: { email: tenant.customers[0].buyerEmail } })).id;
 
-    const addresses = await listActiveCustomerAddressesForBuyer(tenant.tenantId, customerId);
+    const addresses = await listActiveCustomerAddresses(tenant.tenantId, customerId);
     addressId = addresses[0].id;
 
     const seededFixture = await withTenantContext(tenant.tenantId, (tx) => tx.productUnit.findFirstOrThrow({}));
@@ -37,7 +37,7 @@ describe("requestOrderCancellation", () => {
   });
 
   async function submitTestOrder() {
-    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", {
+    const result = await submitOrder(tenant.tenantId, customerId, buyerUserId, "Test Buyer", "BUYER_ADMIN", "CUSTOMER", {
       deliveryAddressId: addressId,
       lines: [{ productUnitId: seededProductUnitId, quantity: 1 }],
     });

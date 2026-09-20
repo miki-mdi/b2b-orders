@@ -1,9 +1,11 @@
-import type { Prisma } from "@prisma/client";
+import type { ActingContext, OrderStatus, Prisma } from "@prisma/client";
 import { withCustomerContext, withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
 import { isUniqueConstraintError } from "@/lib/domain/shared/errors";
 import { resolveCartLine, type ResolvedCartLine } from "./cart-resolution";
 import { isPastCutOffForDelivery } from "./cutoff";
+import { publishOrderEvent } from "./order-events";
+import { isValidOrderTransition } from "./order-status-machine";
 
 export class OrderNotFoundError extends Error {}
 export class OrderNotCancellableError extends Error {}
@@ -24,7 +26,39 @@ export function getOrderForCustomer(tenantId: string, customerId: string, orderI
 
 /** Seller-side: one order across the whole tenant, regardless of which customer placed it. */
 export function getOrderForTenant(tenantId: string, orderId: string) {
-  return withTenantContext(tenantId, (tx) => tx.order.findUnique({ where: { id: orderId }, include: { lines: true } }));
+  return withTenantContext(tenantId, (tx) =>
+    tx.order.findUnique({ where: { id: orderId }, include: { lines: true, customer: true } })
+  );
+}
+
+export type OrderInboxFilter = { status?: OrderStatus; search?: string };
+
+/**
+ * Seller-side inbox: every order under the tenant, optionally filtered by
+ * status and/or a search string matched against the order number (exact,
+ * when the search text is purely numeric) or the customer's name.
+ */
+export function listOrdersForTenant(tenantId: string, filter: OrderInboxFilter = {}) {
+  return withTenantContext(tenantId, (tx) => {
+    const search = filter.search?.trim();
+    const orderNumberSearch = search && /^\d+$/.test(search) ? Number(search) : undefined;
+
+    return tx.order.findMany({
+      where: {
+        ...(filter.status ? { status: filter.status } : {}),
+        ...(search
+          ? {
+              OR: [
+                ...(orderNumberSearch !== undefined ? [{ orderNumber: orderNumberSearch }] : []),
+                { customer: { name: { contains: search, mode: "insensitive" as const } } },
+              ],
+            }
+          : {}),
+      },
+      include: { lines: true, customer: true },
+      orderBy: { createdAt: "desc" },
+    });
+  });
 }
 
 /** Buyer-side: the tenant's cut-off configuration, for the checkout warning (docs/ORDER_WORKFLOW.md §5). */
@@ -55,14 +89,19 @@ export type SubmitOrderResult =
 const MAX_ORDER_NUMBER_ATTEMPTS = 5;
 
 /**
- * The one place a buyer's order gets written. Every line is fully
- * re-resolved (price, visibility, active state, min-qty/increment) via
- * resolveCartLine right before the write - nothing about price, discount,
- * VAT, or eligibility is ever taken from the caller's `input`, only
- * productUnitId + the requested quantity (see docs/SECURITY_AND_MULTI_TENANCY.md).
+ * The one place an order gets written - used by BOTH the buyer's own
+ * checkout (Phase 1C, actingContext "CUSTOMER") and a seller entering an
+ * order on a customer's behalf (Phase 1D, actingContext "TENANT"). Every
+ * line is fully re-resolved (price, visibility, active state,
+ * min-qty/increment) via resolveCartLine right before the write - nothing
+ * about price, discount, VAT, or eligibility is ever taken from the
+ * caller's `input`, only productUnitId + the requested quantity (see
+ * docs/SECURITY_AND_MULTI_TENANCY.md). A seller gets no special treatment
+ * here: the exact same customer-specific pricing/visibility/min-qty rules
+ * apply regardless of who is placing the order, per the Phase 1D brief.
  * If ANY line is no longer valid, the whole submission is rejected rather
  * than silently dropping lines - simpler and safer for MVP than a partial
- * order the buyer didn't ask for.
+ * order nobody asked for.
  */
 export async function submitOrder(
   tenantId: string,
@@ -70,6 +109,7 @@ export async function submitOrder(
   actorUserId: string,
   actorName: string,
   actorRole: string,
+  actingContext: ActingContext,
   input: SubmitOrderInput
 ): Promise<SubmitOrderResult> {
   if (input.lines.length === 0) {
@@ -92,11 +132,39 @@ export async function submitOrder(
     return { ok: false, reason: "LINE_ISSUES", lineIssues };
   }
 
+  let result: SubmitOrderResult | undefined;
   for (let attempt = 0; attempt < MAX_ORDER_NUMBER_ATTEMPTS; attempt++) {
-    const result = await attemptSubmitOrder(tenantId, customerId, actorUserId, actorName, actorRole, input, okLines);
-    if (result.kind === "DONE") return result.value;
+    const attemptResult = await attemptSubmitOrder(
+      tenantId,
+      customerId,
+      actorUserId,
+      actorName,
+      actorRole,
+      actingContext,
+      input,
+      okLines
+    );
+    if (attemptResult.kind === "DONE") {
+      result = attemptResult.value;
+      break;
+    }
   }
-  throw new Error("Could not allocate an order number after several attempts - please try again.");
+  if (!result) {
+    throw new Error("Could not allocate an order number after several attempts - please try again.");
+  }
+
+  if (result.ok) {
+    await publishOrderEvent({
+      type: "SUBMITTED",
+      tenantId,
+      orderId: result.order.id,
+      orderNumber: result.order.orderNumber,
+      customerId,
+      actorUserId,
+      occurredAt: new Date(),
+    });
+  }
+  return result;
 }
 
 async function attemptSubmitOrder(
@@ -105,6 +173,7 @@ async function attemptSubmitOrder(
   actorUserId: string,
   actorName: string,
   actorRole: string,
+  actingContext: ActingContext,
   input: SubmitOrderInput,
   okLines: Extract<ResolvedCartLine, { ok: true }>[]
 ): Promise<{ kind: "CONFLICT" } | { kind: "DONE"; value: SubmitOrderResult }> {
@@ -181,11 +250,12 @@ async function attemptSubmitOrder(
       await writeAuditLogEntry(tx, {
         tenantId,
         actorUserId,
-        actingContext: "CUSTOMER",
+        actingContext,
         entityType: "Order",
         entityId: order.id,
         action: "CREATE",
         newValue: order,
+        ...(actingContext === "TENANT" ? { reason: "Entered by seller on behalf of customer" } : {}),
       });
 
       return { kind: "DONE" as const, value: { ok: true as const, order } };
@@ -215,18 +285,18 @@ export async function requestOrderCancellation(
   orderId: string,
   reason?: string
 ) {
-  return withCustomerContext(tenantId, customerId, async (tx) => {
+  const after = await withCustomerContext(tenantId, customerId, async (tx) => {
     const order = await tx.order.findUnique({ where: { id: orderId } });
     if (!order) {
       throw new OrderNotFoundError("Order not found.");
     }
-    if (order.status !== "SUBMITTED") {
+    if (!isValidOrderTransition(order.status, "CANCELLED")) {
       throw new OrderNotCancellableError(
         "Only an order that is still awaiting seller confirmation can be cancelled by the buyer."
       );
     }
 
-    const after = await tx.order.update({
+    const updated = await tx.order.update({
       where: { id: orderId },
       data: { status: "CANCELLED", cancelledBy: "BUYER", cancelReason: reason ?? null },
     });
@@ -238,11 +308,24 @@ export async function requestOrderCancellation(
       entityType: "Order",
       entityId: orderId,
       action: "UPDATE",
-      oldValue: { status: order.status },
-      newValue: { status: after.status, cancelledBy: after.cancelledBy, cancelReason: after.cancelReason },
+      fieldName: "status",
+      oldValue: order.status,
+      newValue: updated.status,
       reason,
     });
 
-    return after;
+    return updated;
   });
+
+  await publishOrderEvent({
+    type: "CANCELLED",
+    tenantId,
+    orderId: after.id,
+    orderNumber: after.orderNumber,
+    customerId,
+    actorUserId,
+    occurredAt: new Date(),
+  });
+
+  return after;
 }

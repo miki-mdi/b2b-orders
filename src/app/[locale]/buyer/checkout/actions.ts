@@ -42,6 +42,7 @@ export async function submitOrderAction(prevState: FormState, formData: FormData
     session.userId,
     session.userName,
     session.role,
+    "CUSTOMER",
     parsed.data
   );
 

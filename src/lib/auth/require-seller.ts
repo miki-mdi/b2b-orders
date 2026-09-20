@@ -3,6 +3,7 @@ import { auth } from "./auth";
 
 export type SellerSession = {
   userId: string;
+  userName: string;
   tenantId: string;
   role: "SELLER_ADMIN" | "SALES_REP" | "WAREHOUSE_WORKER" | "DELIVERY_DRIVER";
 };
@@ -32,6 +33,7 @@ export async function requireSellerSession(): Promise<SellerSession> {
 
   return {
     userId: session.user.id,
+    userName: session.user.name,
     tenantId: membership.tenantId,
     role: membership.role,
   };

@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { requireBuyerSession } from "@/lib/auth/require-buyer";
-import { listActiveCustomerAddressesForBuyer } from "@/lib/domain/customers/customer-address-service";
+import { listActiveCustomerAddresses } from "@/lib/domain/customers/customer-address-service";
 import { getTenantCutOffInfo } from "@/lib/domain/orders/order-service";
 import { CheckoutForm } from "./checkout-form";
 
@@ -9,7 +9,7 @@ export default async function BuyerCheckoutPage() {
   const t = await getTranslations("buyer.checkout");
 
   const [addresses, tenant] = await Promise.all([
-    listActiveCustomerAddressesForBuyer(session.tenantId, session.customerId),
+    listActiveCustomerAddresses(session.tenantId, session.customerId),
     getTenantCutOffInfo(session.tenantId, session.customerId),
   ]);
 

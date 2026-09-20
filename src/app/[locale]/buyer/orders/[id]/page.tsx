@@ -76,6 +76,10 @@ export default async function BuyerOrderDetailPage({
         )}
       </div>
 
+      {order.placedByRole !== "BUYER_ADMIN" && order.placedByRole !== "BUYER_EMPLOYEE" && (
+        <p className="text-sm text-zinc-500">{t("placedBy", { name: order.placedByName, role: order.placedByRole })}</p>
+      )}
+
       {order.status === "SUBMITTED" && <CancelOrderForm orderId={order.id} />}
       {order.status === "CANCELLED" && order.cancelReason && (
         <p className="text-sm text-zinc-500">

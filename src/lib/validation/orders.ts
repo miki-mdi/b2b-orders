@@ -49,6 +49,35 @@ export const cancelOrderInputSchema = z.object({
 });
 export type CancelOrderInput = z.infer<typeof cancelOrderInputSchema>;
 
+// Seller confirmation, per line. `confirmedQty` is only ever compared
+// against the line's OWN requestedQty (fetched server-side, never trusted
+// from the form) - see confirmOrder in order-fulfillment-service.ts for the
+// "cannot exceed requested" / "reason required when changed" rules this
+// schema alone can't express (they need the DB's requestedQty to check
+// against).
+export const confirmOrderLineInputSchema = z.object({
+  orderLineId: z.string().trim().min(1, "Order line id is required"),
+  confirmedQty: z.coerce
+    .number({ message: "Confirmed quantity must be a number" })
+    .min(0, "Confirmed quantity cannot be negative"),
+  reason: optionalTrimmedString(500),
+});
+export type ConfirmOrderLineInput = z.infer<typeof confirmOrderLineInputSchema>;
+
+export const confirmOrderInputSchema = z.object({
+  lines: z.array(confirmOrderLineInputSchema).min(1, "An order must have at least one line to confirm"),
+});
+export type ConfirmOrderInput = z.infer<typeof confirmOrderInputSchema>;
+
+// Seller-entered order on behalf of a customer - same shape as the buyer's
+// own submitOrderInputSchema, plus an explicit customerId (the seller picks
+// which of their tenant's customers this order is for; a buyer's own
+// checkout never needs this since it's always their own session customerId).
+export const sellerOrderInputSchema = submitOrderInputSchema.extend({
+  customerId: z.string().trim().min(1, "Customer is required"),
+});
+export type SellerOrderInput = z.infer<typeof sellerOrderInputSchema>;
+
 function startOfToday(): Date {
   const now = new Date();
   now.setHours(0, 0, 0, 0);

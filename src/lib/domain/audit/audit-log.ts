@@ -22,6 +22,13 @@ export type WriteAuditLogEntryInput = {
   entityType: string;
   entityId: string;
   action: AuditAction;
+  // Set for a granular field-level change (e.g. a seller adjusting one
+  // OrderLine's confirmedQty) as opposed to a whole-row CREATE/UPDATE
+  // snapshot - see docs/DATABASE_DESIGN.md §3's AuditLogEntry example and
+  // docs/ORDER_WORKFLOW.md §4. The column has existed on AuditLogEntry
+  // since Phase 0; this helper just never plumbed it through until Phase 1D
+  // needed its first genuinely field-level audit entry.
+  fieldName?: string;
   oldValue?: unknown;
   newValue?: unknown;
   reason?: string;
@@ -36,6 +43,7 @@ export function writeAuditLogEntry(tx: ScopedTransactionClient, input: WriteAudi
       entityType: input.entityType,
       entityId: input.entityId,
       action: input.action,
+      fieldName: input.fieldName,
       oldValue: input.oldValue !== undefined ? JSON.stringify(input.oldValue) : null,
       newValue: input.newValue !== undefined ? JSON.stringify(input.newValue) : null,
       reason: input.reason,

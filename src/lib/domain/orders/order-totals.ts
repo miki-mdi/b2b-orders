@@ -58,3 +58,41 @@ export function computeOrderTotals(lines: OrderLineForTotals[]): OrderTotals {
     { subtotal: 0, vat: 0, total: 0 }
   );
 }
+
+/**
+ * The order EXACTLY as the buyer submitted it, ignoring any seller
+ * confirmation adjustment - Phase 1D's "original submitted totals remain
+ * preserved as a historical snapshot" rule (docs/SESSION_HANDOFF.md §10).
+ * This never mutates or re-derives requestedQty/the price snapshot fields;
+ * it simply computes totals as if confirmedQty had never been set, from
+ * the exact same immutable fields computeOrderTotals reads.
+ */
+export function computeSubmittedOrderTotals(lines: OrderLineForTotals[]): OrderTotals {
+  return computeOrderTotals(lines.map((line) => ({ ...line, confirmedQty: null })));
+}
+
+export type LineFulfillment = {
+  requestedQty: number;
+  confirmedQty: number | null;
+  unavailableQty: number | null;
+};
+
+/**
+ * Partial fulfillment is represented per line, not as a separate top-level
+ * order status (docs/ORDER_WORKFLOW.md §1, item 1 - "PARTIALLY_CONFIRMED
+ * as a top-level status is ambiguous" was already rejected in that
+ * decision). `unavailableQty` is purely derived (requestedQty -
+ * confirmedQty), never its own stored field - there is nothing to keep in
+ * sync since it's computed fresh from the two columns that already exist.
+ */
+export function computeLineFulfillment(line: {
+  requestedQty: number;
+  confirmedQty?: number | null;
+}): LineFulfillment {
+  const confirmedQty = line.confirmedQty ?? null;
+  return {
+    requestedQty: line.requestedQty,
+    confirmedQty,
+    unavailableQty: confirmedQty != null ? round2(line.requestedQty - confirmedQty) : null,
+  };
+}
