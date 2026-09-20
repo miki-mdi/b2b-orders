@@ -30,6 +30,11 @@ export default async function HomePage() {
                 {t("sellerAdmin")}
               </Link>
             )}
+            {session.user.activeMembership?.type === "CUSTOMER" && (
+              <Link href="/buyer" className="underline underline-offset-2">
+                {t("buyerPortal")}
+              </Link>
+            )}
             <form
               action={async () => {
                 "use server";

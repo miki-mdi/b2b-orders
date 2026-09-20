@@ -1,9 +1,25 @@
 import type { CustomerAddressInput } from "@/lib/validation/customers";
 import type { ScopedTransactionClient } from "@/lib/db/scoped-client";
-import { withTenantContext } from "@/lib/db/with-tenant";
+import { withCustomerContext, withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
 
 export class CustomerNotFoundError extends Error {}
+
+/**
+ * Buyer-side: this customer's own active delivery addresses, default-first.
+ * Goes through withCustomerContext (not the seller-oriented
+ * listCustomerAddresses below) so a buyer session can never be pointed at
+ * another customer's addresses even by accident - customerId here is always
+ * the session's own, never a route param.
+ */
+export function listActiveCustomerAddressesForBuyer(tenantId: string, customerId: string) {
+  return withCustomerContext(tenantId, customerId, (tx) =>
+    tx.customerAddress.findMany({
+      where: { isActive: true },
+      orderBy: [{ isDefaultDelivery: "desc" }, { createdAt: "asc" }],
+    })
+  );
+}
 
 async function assertCustomerBelongsToTenant(tx: ScopedTransactionClient, customerId: string) {
   const customer = await tx.customer.findUnique({ where: { id: customerId } });

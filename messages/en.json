@@ -8,7 +8,8 @@
     "noMembership": "No active membership on this account.",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "sellerAdmin": "Seller admin"
+    "sellerAdmin": "Seller admin",
+    "buyerPortal": "Buyer portal"
   },
   "membership": {
     "platformAdmin": "Platform Admin",
@@ -206,6 +207,120 @@
       "columnPrice": "Price",
       "deleteAction": "Remove",
       "noProductUnitsWarning": "No product units are available to price yet - add products and packaging options first."
+    }
+  },
+  "buyer": {
+    "nav": {
+      "title": "Buyer Portal",
+      "catalog": "Catalog",
+      "cart": "Cart",
+      "orders": "Orders",
+      "backToSite": "Back to site"
+    },
+    "common": {
+      "loading": "Loading…",
+      "save": "Save",
+      "cancel": "Cancel",
+      "back": "Back",
+      "backToList": "Back to list",
+      "actions": "Actions"
+    },
+    "catalog": {
+      "title": "Catalog",
+      "searchPlaceholder": "Search by name, SKU or barcode",
+      "categoryAll": "All categories",
+      "search": "Search",
+      "empty": "No products available.",
+      "sku": "SKU",
+      "unit": "Packaging",
+      "vatNote": "+ {rate}% VAT",
+      "quantityLabel": "Quantity",
+      "addToCart": "Add to cart",
+      "added": "Added",
+      "minQtyNote": "Min {min}, step {increment}"
+    },
+    "cart": {
+      "title": "Cart",
+      "empty": "Your cart is empty.",
+      "browseCatalog": "Browse catalog",
+      "columnProduct": "Product",
+      "columnQuantity": "Quantity",
+      "columnUnitPrice": "Unit price",
+      "columnLineTotal": "Line total",
+      "remove": "Remove",
+      "update": "Update",
+      "subtotal": "Subtotal",
+      "vat": "VAT",
+      "total": "Total due",
+      "checkout": "Go to checkout",
+      "loadingPrices": "Checking current prices…",
+      "issue": {
+        "NOT_FOUND": "This product no longer exists.",
+        "INVALID_QUANTITY": "Invalid quantity.",
+        "BELOW_MIN_QTY": "Below the minimum order quantity.",
+        "INVALID_INCREMENT": "Quantity does not match the order increment.",
+        "CUSTOMER_INACTIVE": "Your account is not currently active.",
+        "PRODUCT_INACTIVE": "This product is no longer available.",
+        "PRODUCT_UNIT_INACTIVE": "This packaging option is no longer available.",
+        "HIDDEN_FOR_CUSTOMER": "This product is no longer available to you.",
+        "NO_ASSIGNMENT": "You have no price list assigned - contact your seller.",
+        "NO_PRICE": "No price is set for this product."
+      }
+    },
+    "checkout": {
+      "title": "Checkout",
+      "emptyCart": "Your cart is empty.",
+      "deliveryAddress": "Delivery address",
+      "noAddresses": "No active delivery address on file - contact your seller.",
+      "note": "Note (optional)",
+      "notePlaceholder": "Anything the seller should know about this order",
+      "deliveryDate": "Requested delivery date",
+      "cutOffWarning": "Orders placed after {time} may not be processed in time for tomorrow's delivery.",
+      "summary": "Summary",
+      "subtotal": "Subtotal",
+      "vat": "VAT",
+      "total": "Total due",
+      "submit": "Submit order",
+      "backToCart": "Back to cart"
+    },
+    "orders": {
+      "title": "My orders",
+      "empty": "You have no orders yet.",
+      "columnNumber": "Order #",
+      "columnStatus": "Status",
+      "columnDate": "Date",
+      "columnTotal": "Total",
+      "viewDetail": "View",
+      "detailTitle": "Order #{number}",
+      "submittedAt": "Submitted {date}",
+      "deliveryAddress": "Delivery address",
+      "note": "Note",
+      "lines": "Line items",
+      "columnProduct": "Product",
+      "columnSku": "SKU",
+      "columnUnit": "Packaging",
+      "columnQty": "Qty",
+      "columnUnitPrice": "Unit price",
+      "columnLineTotal": "Line total",
+      "subtotal": "Subtotal",
+      "vat": "VAT",
+      "total": "Total due",
+      "cancelAction": "Request cancellation",
+      "cancelReasonLabel": "Reason (optional)",
+      "cancelSubmit": "Confirm cancellation request",
+      "cancelNotAllowed": "This order can no longer be cancelled.",
+      "submittedBanner": "Your order was submitted successfully.",
+      "cutOffWasShown": "You were warned about the delivery cut-off time when you submitted this order.",
+      "status": {
+        "DRAFT": "Draft",
+        "SUBMITTED": "Submitted",
+        "CONFIRMED": "Confirmed",
+        "CANCELLED": "Cancelled",
+        "PICKING": "Picking",
+        "READY": "Ready",
+        "OUT_FOR_DELIVERY": "Out for delivery",
+        "DELIVERED": "Delivered"
+      }
     }
   }
 }

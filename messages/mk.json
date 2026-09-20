@@ -8,7 +8,8 @@
     "noMembership": "Нема активно членство на оваа сметка.",
     "signIn": "Најава",
     "signOut": "Одјава",
-    "sellerAdmin": "Администрација за продавачи"
+    "sellerAdmin": "Администрација за продавачи",
+    "buyerPortal": "Купувачки портал"
   },
   "membership": {
     "platformAdmin": "Администратор на платформата",
@@ -206,6 +207,120 @@
       "columnPrice": "Цена",
       "deleteAction": "Отстрани",
       "noProductUnitsWarning": "Сè уште нема достапни единици на производи за ценување - прво додадете производи и опции за пакување."
+    }
+  },
+  "buyer": {
+    "nav": {
+      "title": "Купувачки портал",
+      "catalog": "Каталог",
+      "cart": "Кошничка",
+      "orders": "Нарачки",
+      "backToSite": "Назад кон страницата"
+    },
+    "common": {
+      "loading": "Се вчитува…",
+      "save": "Зачувај",
+      "cancel": "Откажи",
+      "back": "Назад",
+      "backToList": "Назад кон листата",
+      "actions": "Акции"
+    },
+    "catalog": {
+      "title": "Каталог",
+      "searchPlaceholder": "Пребарај по име, шифра или баркод",
+      "categoryAll": "Сите категории",
+      "search": "Пребарај",
+      "empty": "Нема достапни производи.",
+      "sku": "Шифра",
+      "unit": "Пакување",
+      "vatNote": "+ {rate}% ДДВ",
+      "quantityLabel": "Количина",
+      "addToCart": "Додади во кошничка",
+      "added": "Додадено",
+      "minQtyNote": "Мин. {min}, чекор {increment}"
+    },
+    "cart": {
+      "title": "Кошничка",
+      "empty": "Кошничката е празна.",
+      "browseCatalog": "Прегледај каталог",
+      "columnProduct": "Производ",
+      "columnQuantity": "Количина",
+      "columnUnitPrice": "Цена по единица",
+      "columnLineTotal": "Вкупно",
+      "remove": "Отстрани",
+      "update": "Ажурирај",
+      "subtotal": "Основа",
+      "vat": "ДДВ",
+      "total": "Вкупно за плаќање",
+      "checkout": "Кон нарачка",
+      "loadingPrices": "Ги проверувам тековните цени…",
+      "issue": {
+        "NOT_FOUND": "Овој производ повеќе не постои.",
+        "INVALID_QUANTITY": "Неважечка количина.",
+        "BELOW_MIN_QTY": "Под минималната количина за нарачка.",
+        "INVALID_INCREMENT": "Количината не одговара на чекорот на нарачка.",
+        "CUSTOMER_INACTIVE": "Вашата сметка моментално не е активна.",
+        "PRODUCT_INACTIVE": "Овој производ повеќе не е достапен.",
+        "PRODUCT_UNIT_INACTIVE": "Ова пакување повеќе не е достапно.",
+        "HIDDEN_FOR_CUSTOMER": "Овој производ повеќе не е достапен за вас.",
+        "NO_ASSIGNMENT": "Немате доделено ценовник - контактирајте го продавачот.",
+        "NO_PRICE": "Нема поставена цена за овој производ."
+      }
+    },
+    "checkout": {
+      "title": "Завршување нарачка",
+      "emptyCart": "Кошничката е празна.",
+      "deliveryAddress": "Адреса за достава",
+      "noAddresses": "Нема активна адреса за достава - контактирајте го продавачот.",
+      "note": "Белешка (опционално)",
+      "notePlaceholder": "Сè што продавачот треба да знае за оваа нарачка",
+      "deliveryDate": "Посакуван датум на достава",
+      "cutOffWarning": "Нарачките по {time} можеби нема да бидат обработени за утрешна достава.",
+      "summary": "Преглед",
+      "subtotal": "Основа",
+      "vat": "ДДВ",
+      "total": "Вкупно за плаќање",
+      "submit": "Испрати нарачка",
+      "backToCart": "Назад кон кошничка"
+    },
+    "orders": {
+      "title": "Мои нарачки",
+      "empty": "Сè уште немате нарачки.",
+      "columnNumber": "Бр. нарачка",
+      "columnStatus": "Статус",
+      "columnDate": "Датум",
+      "columnTotal": "Вкупно",
+      "viewDetail": "Детали",
+      "detailTitle": "Нарачка бр. {number}",
+      "submittedAt": "Испратена на {date}",
+      "deliveryAddress": "Адреса за достава",
+      "note": "Белешка",
+      "lines": "Ставки",
+      "columnProduct": "Производ",
+      "columnSku": "Шифра",
+      "columnUnit": "Пакување",
+      "columnQty": "Кол.",
+      "columnUnitPrice": "Цена",
+      "columnLineTotal": "Вкупно",
+      "subtotal": "Основа",
+      "vat": "ДДВ",
+      "total": "Вкупно за плаќање",
+      "cancelAction": "Барај откажување",
+      "cancelReasonLabel": "Причина (опционално)",
+      "cancelSubmit": "Потврди барање за откажување",
+      "cancelNotAllowed": "Оваа нарачка веќе не може да се откаже.",
+      "submittedBanner": "Нарачката е успешно испратена.",
+      "cutOffWasShown": "Бевте предупредени за рокот за нарачки при испраќањето на оваа нарачка.",
+      "status": {
+        "DRAFT": "Нацрт",
+        "SUBMITTED": "Испратена",
+        "CONFIRMED": "Потврдена",
+        "CANCELLED": "Откажана",
+        "PICKING": "Се комплетира",
+        "READY": "Подготвена",
+        "OUT_FOR_DELIVERY": "Во достава",
+        "DELIVERED": "Доставена"
+      }
     }
   }
 }
