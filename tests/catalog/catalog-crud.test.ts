@@ -17,7 +17,7 @@ import {
 } from "@/lib/domain/catalog/unit-of-measure-service";
 import { CategoryNotFoundError, createProduct, getProduct, setProductActive } from "@/lib/domain/catalog/product-service";
 import { createProductUnit, setProductUnitActive } from "@/lib/domain/catalog/product-unit-service";
-import { DuplicateValueError } from "@/lib/domain/catalog/errors";
+import { DuplicateValueError } from "@/lib/domain/shared/errors";
 
 describe("seller catalog CRUD", () => {
   let tenant: SeededTenant;

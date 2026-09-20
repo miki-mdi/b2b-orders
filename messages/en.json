@@ -32,6 +32,8 @@
       "categories": "Categories",
       "units": "Units of Measure",
       "products": "Products",
+      "customers": "Customers",
+      "priceLists": "Price Lists",
       "backToSite": "Back to site"
     },
     "dashboard": {
@@ -39,7 +41,9 @@
       "intro": "Manage the categories, units of measure and products your customers will see.",
       "categoriesCard": "Categories",
       "unitsCard": "Units of Measure",
-      "productsCard": "Products"
+      "productsCard": "Products",
+      "customersCard": "Customers",
+      "priceListsCard": "Price Lists"
     },
     "common": {
       "active": "Active",
@@ -118,6 +122,90 @@
       "columnMinQty": "Min qty",
       "columnIncrement": "Increment",
       "noUnitsWarning": "You need at least one active unit of measure before you can add packaging options."
+    },
+    "customers": {
+      "title": "Customers",
+      "empty": "No customers yet. Create your first one to start managing buyers.",
+      "newTitle": "New customer",
+      "editTitle": "Edit customer",
+      "name": "Name",
+      "code": "Customer code",
+      "taxId": "Tax/VAT number",
+      "contactEmail": "Contact email",
+      "contactPhone": "Contact phone",
+      "notes": "Notes",
+      "creditLimit": "Credit limit (informational only)",
+      "paymentTermsDays": "Payment terms (days, informational only)",
+      "columnName": "Name",
+      "columnCode": "Code",
+      "columnContact": "Contact"
+    },
+    "addresses": {
+      "title": "Addresses",
+      "empty": "No addresses yet. Add at least one delivery address for this customer.",
+      "newTitle": "New address",
+      "editTitle": "Edit address",
+      "label": "Address label",
+      "recipientName": "Contact person",
+      "phone": "Phone",
+      "addressLine1": "Street address",
+      "addressLine2": "Address line 2",
+      "city": "City",
+      "postalCode": "Postal code",
+      "country": "Country",
+      "isDefaultDelivery": "Default delivery address",
+      "isDefaultBilling": "Default billing address",
+      "columnLabel": "Label",
+      "columnCity": "City",
+      "columnDefault": "Default"
+    },
+    "pricing": {
+      "title": "Price list & discount",
+      "assignedPriceList": "Assigned price list",
+      "noAssignment": "No price list assigned - this customer cannot see any prices yet.",
+      "selectPriceList": "No price list (unassigned)",
+      "discount": "Discount (%)",
+      "discountHint": "Applied after the price-list price. Leave blank for no discount.",
+      "save": "Save"
+    },
+    "visibility": {
+      "title": "Product visibility",
+      "intro": "Products are visible to this customer by default. Hide specific products below to override that.",
+      "empty": "No active products in the catalog yet.",
+      "columnProduct": "Product",
+      "columnStatus": "Visibility",
+      "hideAction": "Hide for this customer",
+      "unhideAction": "Un-hide",
+      "hiddenBadge": "Hidden",
+      "visibleBadge": "Visible (default)"
+    },
+    "priceLists": {
+      "title": "Price Lists",
+      "empty": "No price lists yet. Create your first one.",
+      "newTitle": "New price list",
+      "editTitle": "Edit price list",
+      "name": "Name",
+      "code": "Code",
+      "description": "Description",
+      "currency": "Currency",
+      "isDefault": "Default price list for new customers",
+      "columnName": "Name",
+      "columnCode": "Code",
+      "columnCurrency": "Currency"
+    },
+    "priceListItems": {
+      "title": "Prices",
+      "empty": "No prices set yet. Add a price for a product packaging below.",
+      "newTitle": "Add price",
+      "editTitle": "Edit price",
+      "productUnit": "Product / packaging",
+      "selectProductUnit": "Select a product unit",
+      "price": "Price",
+      "columnProduct": "Product",
+      "columnUnit": "Unit",
+      "columnPrice": "Price",
+      "deleteAction": "Remove",
+      "noProductUnitsWarning": "No product units are available to price yet - add products and packaging options first."
     }
   }
 }

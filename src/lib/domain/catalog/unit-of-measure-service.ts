@@ -1,7 +1,7 @@
 import type { UnitOfMeasureInput } from "@/lib/validation/catalog";
 import { withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
-import { DuplicateValueError, isUniqueConstraintError } from "./errors";
+import { DuplicateValueError, isUniqueConstraintError } from "@/lib/domain/shared/errors";
 
 export function listUnitsOfMeasure(tenantId: string) {
   return withTenantContext(tenantId, (tx) => tx.unitOfMeasure.findMany({ orderBy: { code: "asc" } }));

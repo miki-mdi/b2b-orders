@@ -3,7 +3,7 @@ import { prismaBase } from "@/lib/db/prisma";
 import { prisma as scopedPrisma } from "@/lib/db/scoped-client";
 import { withCustomerContext, withTenantContext } from "@/lib/db/with-tenant";
 import { CustomerContextMissingError, TenantContextMissingError } from "@/lib/db/tenant-context";
-import { getCustomerById, listCustomers } from "@/lib/domain/customers/customer-service";
+import { getCustomer, listCustomers } from "@/lib/domain/customers/customer-service";
 import { getOrderForCustomer, listOrdersForCustomer } from "@/lib/domain/orders/order-service";
 import { hashPassword } from "@/lib/auth/password";
 import { DEV_PASSWORD, resetDatabase, seedTenant, type SeededTenant } from "../../prisma/seed";
@@ -42,7 +42,7 @@ describe("tenant and customer isolation", () => {
 
   describe("1. tenant A cannot read tenant B's data", () => {
     it("returns null fetching another tenant's customer by id (application path)", async () => {
-      const result = await getCustomerById(alpha.tenantId, beta.customers[0].id);
+      const result = await getCustomer(alpha.tenantId, beta.customers[0].id);
       expect(result).toBeNull();
     });
 

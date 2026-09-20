@@ -338,18 +338,22 @@ model ProductUnit {
 // ---------------------------------------------------------------------------
 
 model PriceList {
-  id        String   @id @default(uuid())
-  tenantId  String
-  name      String
-  currency  String   @default("MKD")
-  isDefault Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String  @id @default(uuid())
+  tenantId    String
+  name        String
+  code        String? // optional short reference code, e.g. "STD", "VIP"
+  description String?
+  currency    String  @default("MKD")
+  isDefault   Boolean @default(false)
+  isActive    Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   tenant                       Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   items                        PriceListItem[]
   customerPriceListAssignments CustomerPriceListAssignment[]
 
+  @@unique([tenantId, code])
   @@index([tenantId])
 }
 
@@ -377,7 +381,12 @@ model Customer {
   id       String  @id @default(uuid())
   tenantId String
   name     String
+  code     String? // seller-assigned customer number, e.g. "CUST-0042"
   taxId    String? // ЕДБ
+
+  contactEmail String?
+  contactPhone String?
+  notes        String?
 
   discountPercent     Decimal? @db.Decimal(5, 2)
   // Stored, never enforced in MVP - see docs/MVP_SCOPE.md.
@@ -397,6 +406,7 @@ model Customer {
   favoriteLists               FavoriteList[]
   orders                      Order[]
 
+  @@unique([tenantId, code])
   @@index([tenantId])
 }
 
@@ -407,6 +417,7 @@ model CustomerAddress {
   label      String // e.g. "Main warehouse", "Downtown branch"
 
   recipientName String
+  phone         String?
   addressLine1  String
   addressLine2  String?
   city          String

@@ -2,7 +2,7 @@ import type { ProductUnitInput } from "@/lib/validation/catalog";
 import type { ScopedTransactionClient } from "@/lib/db/scoped-client";
 import { withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
-import { DuplicateValueError, isUniqueConstraintError } from "./errors";
+import { DuplicateValueError, isUniqueConstraintError } from "@/lib/domain/shared/errors";
 
 export class ProductNotFoundError extends Error {}
 export class UnitOfMeasureNotFoundError extends Error {}
@@ -32,6 +32,17 @@ export function listProductUnits(tenantId: string, productId: string) {
       where: { productId },
       include: { unitOfMeasure: true },
       orderBy: { createdAt: "asc" },
+    })
+  );
+}
+
+/** Every active product unit across the whole catalog, for pricing screens. */
+export function listAllProductUnits(tenantId: string) {
+  return withTenantContext(tenantId, (tx) =>
+    tx.productUnit.findMany({
+      where: { isActive: true, product: { isActive: true } },
+      include: { product: true, unitOfMeasure: true },
+      orderBy: [{ product: { nameEn: "asc" } }, { label: "asc" }],
     })
   );
 }

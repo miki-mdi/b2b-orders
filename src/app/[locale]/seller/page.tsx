@@ -8,6 +8,8 @@ export default async function SellerDashboardPage() {
     { href: "/seller/categories" as const, label: t("categoriesCard") },
     { href: "/seller/units" as const, label: t("unitsCard") },
     { href: "/seller/products" as const, label: t("productsCard") },
+    { href: "/seller/customers" as const, label: t("customersCard") },
+    { href: "/seller/price-lists" as const, label: t("priceListsCard") },
   ];
 
   return (

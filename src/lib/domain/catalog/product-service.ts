@@ -2,7 +2,7 @@ import type { ProductInput } from "@/lib/validation/catalog";
 import type { ScopedTransactionClient } from "@/lib/db/scoped-client";
 import { withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
-import { DuplicateValueError, isUniqueConstraintError } from "./errors";
+import { DuplicateValueError, isUniqueConstraintError } from "@/lib/domain/shared/errors";
 
 export class CategoryNotFoundError extends Error {}
 
