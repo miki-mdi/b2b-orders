@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability, hasCapability } from "@/lib/auth/permissions";
 import { getCustomer } from "@/lib/domain/customers/customer-service";
 import { listPriceLists } from "@/lib/domain/pricing/price-list-service";
 import { listCustomerProductVisibility } from "@/lib/domain/customers/customer-product-visibility-service";
 import { StatusBadge } from "@/components/seller/status-badge";
 import { ToggleActiveForm } from "@/components/seller/toggle-active-form";
 import { CustomerForm } from "../../customer-form";
+import { CustomerContactInfoForm } from "../../customer-contact-info-form";
 import { updateCustomerAction } from "../../actions";
 import { toggleCustomerAddressActiveAction } from "../addresses/actions";
 import { updateCustomerAssignmentAction, updateCustomerDiscountAction } from "../pricing/actions";
@@ -18,6 +20,13 @@ import { VisibilityToggleForm } from "../visibility/visibility-toggle-form";
 export default async function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireSellerSession();
+  requireSellerCapability(session, "customers:read");
+  const canEditFull = hasCapability(session.role, "customers:write:full");
+  const canEditLimited = hasCapability(session.role, "customers:write:limited");
+  const canManageAddresses = hasCapability(session.role, "customers:addresses:write");
+  const canDeactivateAddresses = hasCapability(session.role, "customers:addresses:deactivate");
+  const canWritePricing = hasCapability(session.role, "pricing:write");
+  const canWriteVisibility = hasCapability(session.role, "customer-visibility:write");
   const t = await getTranslations("seller.customers");
   const tAddresses = await getTranslations("seller.addresses");
   const tPricing = await getTranslations("seller.pricing");
@@ -38,20 +47,28 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
           <Link href="/seller/customers" className="text-sm underline underline-offset-2">
             {tCommon("backToList")}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold">{t("editTitle")}</h1>
+          <h1 className="mt-2 text-2xl font-semibold">{canEditFull ? t("editTitle") : t("viewTitle")}</h1>
         </div>
-        <CustomerForm action={updateCustomerAction.bind(null, id)} customer={customer} />
+        {canEditFull ? (
+          <CustomerForm action={updateCustomerAction.bind(null, id)} customer={customer} />
+        ) : canEditLimited ? (
+          <CustomerContactInfoForm action={updateCustomerAction.bind(null, id)} customer={customer} />
+        ) : (
+          <CustomerForm action={updateCustomerAction.bind(null, id)} customer={customer} readOnly />
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold">{tAddresses("title")}</h2>
-          <Link
-            href={`/seller/customers/${id}/addresses/new`}
-            className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-          >
-            {tCommon("addNew")}
-          </Link>
+          {canManageAddresses && (
+            <Link
+              href={`/seller/customers/${id}/addresses/new`}
+              className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+            >
+              {tCommon("addNew")}
+            </Link>
+          )}
         </div>
 
         {customer.addresses.length === 0 ? (
@@ -95,14 +112,16 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
                           href={`/seller/customers/${id}/addresses/${address.id}/edit`}
                           className="text-sm underline underline-offset-2"
                         >
-                          {tCommon("edit")}
+                          {canManageAddresses ? tCommon("edit") : tCommon("view")}
                         </Link>
-                        <ToggleActiveForm
-                          action={toggleCustomerAddressActiveAction.bind(null, address.id, !address.isActive)}
-                          isActive={address.isActive}
-                          deactivateLabel={tCommon("deactivate")}
-                          reactivateLabel={tCommon("reactivate")}
-                        />
+                        {canDeactivateAddresses && (
+                          <ToggleActiveForm
+                            action={toggleCustomerAddressActiveAction.bind(null, address.id, !address.isActive)}
+                            isActive={address.isActive}
+                            deactivateLabel={tCommon("deactivate")}
+                            reactivateLabel={tCommon("reactivate")}
+                          />
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -130,6 +149,7 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
           priceLists={priceLists}
           currentPriceListId={customer.priceListAssignment?.priceListId ?? null}
           currentDiscountPercent={customer.discountPercent?.toString() ?? null}
+          readOnly={!canWritePricing}
         />
       </div>
 
@@ -152,9 +172,11 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
                   <th scope="col" className="px-4 py-2 font-medium">
                     {tVisibility("columnStatus")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    {tCommon("actions")}
-                  </th>
+                  {canWriteVisibility && (
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {tCommon("actions")}
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -175,19 +197,21 @@ export default async function EditCustomerPage({ params }: { params: Promise<{ i
                           {isHidden ? tVisibility("hiddenBadge") : tVisibility("visibleBadge")}
                         </span>
                       </td>
-                      <td className="px-4 py-2">
-                        <VisibilityToggleForm
-                          action={setCustomerProductVisibilityAction.bind(
-                            null,
-                            id,
-                            product.id,
-                            isHidden ? null : "HIDDEN"
-                          )}
-                          isHidden={isHidden}
-                          hideLabel={tVisibility("hideAction")}
-                          unhideLabel={tVisibility("unhideAction")}
-                        />
-                      </td>
+                      {canWriteVisibility && (
+                        <td className="px-4 py-2">
+                          <VisibilityToggleForm
+                            action={setCustomerProductVisibilityAction.bind(
+                              null,
+                              id,
+                              product.id,
+                              isHidden ? null : "HIDDEN"
+                            )}
+                            isHidden={isHidden}
+                            hideLabel={tVisibility("hideAction")}
+                            unhideLabel={tVisibility("unhideAction")}
+                          />
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

@@ -40,6 +40,22 @@ export const customerInputSchema = z.object({
 });
 export type CustomerInput = z.infer<typeof customerInputSchema>;
 
+/**
+ * Sales Rep's "limited edit" of a customer (Phase 1F-B1) - contact info
+ * only. Deliberately a separate, narrower schema rather than a partial()
+ * of customerInputSchema: the domain function this feeds
+ * (updateCustomerContactInfo) writes only these three columns regardless of
+ * what a crafted form post contains, so a Sales Rep session can never smuggle
+ * in a code/name/isActive change even past this schema - see
+ * src/lib/domain/customers/customer-service.ts.
+ */
+export const customerContactInfoInputSchema = z.object({
+  contactEmail: optionalEmail,
+  contactPhone: optionalTrimmedString(40),
+  notes: optionalTrimmedString(4000),
+});
+export type CustomerContactInfoInput = z.infer<typeof customerContactInfoInputSchema>;
+
 export const customerAddressInputSchema = z.object({
   label: z.string().trim().min(1, "Label is required").max(100),
   recipientName: z.string().trim().min(1, "Contact person is required").max(200),

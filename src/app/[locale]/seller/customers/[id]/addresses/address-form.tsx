@@ -10,16 +10,23 @@ import type { CustomerAddress } from "@prisma/client";
 export function AddressForm({
   action,
   address,
+  readOnly = false,
 }: {
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
   address?: CustomerAddress;
+  readOnly?: boolean;
 }) {
   const [state, formAction, isPending] = useActionState(action, initialFormState);
   const t = useTranslations("seller.addresses");
   const tCommon = useTranslations("seller.common");
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4" noValidate>
+    <form action={formAction} className="flex max-w-xl flex-col gap-4" noValidate inert={readOnly || undefined}>
+      {readOnly && (
+        <p className="rounded border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+          {tCommon("readOnlyNotice")}
+        </p>
+      )}
       {state.status === "error" && state.message && !state.fieldErrors && (
         <p role="alert" className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
           {state.message}
@@ -177,9 +184,11 @@ export function AddressForm({
         </div>
       </div>
 
-      <div>
-        <SubmitButton pending={isPending}>{tCommon("save")}</SubmitButton>
-      </div>
+      {!readOnly && (
+        <div>
+          <SubmitButton pending={isPending}>{tCommon("save")}</SubmitButton>
+        </div>
+      )}
     </form>
   );
 }

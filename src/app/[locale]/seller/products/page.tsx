@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability, hasCapability } from "@/lib/auth/permissions";
 import { listProductsPage } from "@/lib/domain/catalog/product-service";
 import { clampPage } from "@/lib/pagination";
 import { Link } from "@/i18n/navigation";
@@ -10,6 +11,8 @@ import { toggleProductActiveAction } from "./actions";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const session = await requireSellerSession();
+  requireSellerCapability(session, "catalog:read");
+  const canWrite = hasCapability(session.role, "catalog:write");
   const { page: pageParam } = await searchParams;
   const t = await getTranslations("seller.products");
   const tCommon = await getTranslations("seller.common");
@@ -21,12 +24,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <Link
-          href="/seller/products/new"
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-        >
-          {tCommon("addNew")}
-        </Link>
+        {canWrite && (
+          <Link
+            href="/seller/products/new"
+            className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+          >
+            {tCommon("addNew")}
+          </Link>
+        )}
       </div>
 
       {products.length === 0 ? (
@@ -70,14 +75,16 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
                       <Link href={`/seller/products/${product.id}/edit`} className="text-sm underline underline-offset-2">
-                        {tCommon("edit")}
+                        {canWrite ? tCommon("edit") : tCommon("view")}
                       </Link>
-                      <ToggleActiveForm
-                        action={toggleProductActiveAction.bind(null, product.id, !product.isActive)}
-                        isActive={product.isActive}
-                        deactivateLabel={tCommon("deactivate")}
-                        reactivateLabel={tCommon("reactivate")}
-                      />
+                      {canWrite && (
+                        <ToggleActiveForm
+                          action={toggleProductActiveAction.bind(null, product.id, !product.isActive)}
+                          isActive={product.isActive}
+                          deactivateLabel={tCommon("deactivate")}
+                          reactivateLabel={tCommon("reactivate")}
+                        />
+                      )}
                     </div>
                   </td>
                 </tr>

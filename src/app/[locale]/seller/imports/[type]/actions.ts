@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability } from "@/lib/auth/permissions";
 import { confirmImport, previewImport } from "@/lib/domain/import/import-service";
 import { assertFileSize } from "@/lib/domain/import/security";
 import { IMPORT_TYPES, type ImportType, type ImportConfirmResult, type ImportPreviewResult } from "@/lib/domain/import/types";
@@ -29,6 +30,8 @@ function readFile(formData: FormData): File | null {
  */
 export async function previewImportAction(importType: string, formData: FormData): Promise<ImportActionResult> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "imports:manage");
+  if (forbidden) return forbidden;
   if (!isImportType(importType)) {
     return { status: "error", message: "Unknown import type." };
   }
@@ -50,6 +53,8 @@ export async function previewImportAction(importType: string, formData: FormData
 /** Step 5: the only action that writes - see import-service.ts's confirmImport for the atomicity/audit guarantees. */
 export async function confirmImportAction(importType: string, formData: FormData): Promise<ImportActionResult> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "imports:manage");
+  if (forbidden) return forbidden;
   if (!isImportType(importType)) {
     return { status: "error", message: "Unknown import type." };
   }

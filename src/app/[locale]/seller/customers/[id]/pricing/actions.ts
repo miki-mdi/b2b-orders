@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability } from "@/lib/auth/permissions";
 import { customerPriceListAssignmentInputSchema } from "@/lib/validation/pricing";
 import { customerDiscountInputSchema } from "@/lib/validation/customers";
 import { setCustomerPriceListAssignment } from "@/lib/domain/customers/customer-price-list-assignment-service";
@@ -14,6 +15,8 @@ export async function updateCustomerAssignmentAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "pricing:write");
+  if (forbidden) return forbidden;
   const parsed = customerPriceListAssignmentInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please select a valid price list." };
@@ -35,6 +38,8 @@ export async function updateCustomerDiscountAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "pricing:write");
+  if (forbidden) return forbidden;
   const parsed = customerDiscountInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return {

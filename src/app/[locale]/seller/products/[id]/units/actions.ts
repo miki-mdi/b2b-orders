@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability } from "@/lib/auth/permissions";
 import { productUnitInputSchema, fieldErrorsFromZod } from "@/lib/validation/catalog";
 import { createProductUnit, setProductUnitActive, updateProductUnit } from "@/lib/domain/catalog/product-unit-service";
 import type { FormState } from "@/lib/forms/form-state";
@@ -25,6 +26,8 @@ export async function createProductUnitAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   const parsed = productUnitInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -47,6 +50,8 @@ export async function updateProductUnitAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   const parsed = productUnitInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -69,6 +74,8 @@ export async function toggleProductUnitActiveAction(
   _formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   try {
     await setProductUnitActive(session.tenantId, session.userId, id, nextActive);
   } catch (error) {

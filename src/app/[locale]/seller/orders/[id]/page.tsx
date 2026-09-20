@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { hasCapability, orderReadStatusScopeFor } from "@/lib/auth/permissions";
 import { getOrderForTenant } from "@/lib/domain/orders/order-service";
 import { listOrderActivity } from "@/lib/domain/orders/order-activity-service";
 import {
@@ -34,10 +35,15 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
   const tCommon = await getTranslations("seller.common");
   const locale = await getLocale();
 
-  const order = await getOrderForTenant(session.tenantId, id);
+  const order = await getOrderForTenant(session.tenantId, id, orderReadStatusScopeFor(session.role));
   if (!order) {
     notFound();
   }
+  const canConfirm = hasCapability(session.role, "orders:confirm");
+  const canAdvancePicking = hasCapability(session.role, "orders:advance:PICKING");
+  const canAdvanceReady = hasCapability(session.role, "orders:advance:READY");
+  const canAdvanceOutForDelivery = hasCapability(session.role, "orders:advance:OUT_FOR_DELIVERY");
+  const canAdvanceDelivered = hasCapability(session.role, "orders:advance:DELIVERED");
   const activity = await listOrderActivity(session.tenantId, id);
   const tActivity = await getTranslations("seller.orders.activity");
 
@@ -107,7 +113,7 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
         )}
       </div>
 
-      {order.status === "SUBMITTED" && (
+      {order.status === "SUBMITTED" && canConfirm && (
         <ConfirmOrderForm
           orderId={order.id}
           lines={order.lines.map((line) => ({
@@ -119,16 +125,16 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
           }))}
         />
       )}
-      {order.status === "CONFIRMED" && (
+      {order.status === "CONFIRMED" && canAdvancePicking && (
         <AdvanceStatusForm action={markPickingAction.bind(null, order.id)} label={t("markPicking")} />
       )}
-      {order.status === "PICKING" && (
+      {order.status === "PICKING" && canAdvanceReady && (
         <AdvanceStatusForm action={markReadyAction.bind(null, order.id)} label={t("markReady")} />
       )}
-      {order.status === "READY" && (
+      {order.status === "READY" && canAdvanceOutForDelivery && (
         <AdvanceStatusForm action={markOutForDeliveryAction.bind(null, order.id)} label={t("markOutForDelivery")} />
       )}
-      {order.status === "OUT_FOR_DELIVERY" && (
+      {order.status === "OUT_FOR_DELIVERY" && canAdvanceDelivered && (
         <AdvanceStatusForm
           action={markDeliveredAction.bind(null, order.id)}
           label={t("markDelivered")}

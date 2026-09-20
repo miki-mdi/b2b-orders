@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { getProduct } from "@/lib/domain/catalog/product-service";
 import { listUnitsOfMeasure } from "@/lib/domain/catalog/unit-of-measure-service";
 import { ProductUnitForm } from "../product-unit-form";
@@ -10,6 +11,7 @@ import { createProductUnitAction } from "../actions";
 export default async function NewProductUnitPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: productId } = await params;
   const session = await requireSellerSession();
+  requireSellerCapability(session, "catalog:write");
   const t = await getTranslations("seller.productUnits");
   const tCommon = await getTranslations("seller.common");
 

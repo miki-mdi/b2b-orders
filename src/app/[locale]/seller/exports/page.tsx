@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 
 const EXPORTS = [
   { key: "customers", path: "/api/seller/export/customers" },
@@ -12,8 +13,12 @@ const EXPORTS = [
 export default async function SellerExportsPage() {
   // Guard only - the actual tenant scoping happens per-request inside each
   // /api/seller/export/* route handler (its own requireSellerSession call),
-  // exactly like every other seller page/action in this codebase.
-  await requireSellerSession();
+  // exactly like every other seller page/action in this codebase. Each of
+  // those route handlers also re-checks exports:read itself (Phase 1F-B1) -
+  // this page-level check is only so an unauthorized role never even sees
+  // the download links.
+  const session = await requireSellerSession();
+  requireSellerCapability(session, "exports:read");
   const t = await getTranslations("seller.exports");
 
   return (

@@ -3,6 +3,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability, orderReadStatusScopeFor, type Capability } from "@/lib/auth/permissions";
 import { confirmOrderInputSchema } from "@/lib/validation/orders";
 import { confirmOrder, advanceOrderStatus, type AdvanceableOrderStatus } from "@/lib/domain/orders/order-fulfillment-service";
 import { getOrderForTenant } from "@/lib/domain/orders/order-service";
@@ -10,10 +11,12 @@ import type { FormState } from "@/lib/forms/form-state";
 
 export async function confirmOrderAction(orderId: string, prevState: FormState, formData: FormData): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "orders:confirm");
+  if (forbidden) return forbidden;
   const t = await getTranslations("seller.orders");
   const locale = await getLocale();
 
-  const order = await getOrderForTenant(session.tenantId, orderId);
+  const order = await getOrderForTenant(session.tenantId, orderId, orderReadStatusScopeFor(session.role));
   if (!order) {
     return { status: "error", message: t("confirmErrorGeneric") };
   }
@@ -51,8 +54,17 @@ export async function confirmOrderAction(orderId: string, prevState: FormState, 
   return redirect({ href: `/seller/orders/${orderId}`, locale });
 }
 
+const ADVANCE_CAPABILITY_BY_STATUS: Record<AdvanceableOrderStatus, Capability> = {
+  PICKING: "orders:advance:PICKING",
+  READY: "orders:advance:READY",
+  OUT_FOR_DELIVERY: "orders:advance:OUT_FOR_DELIVERY",
+  DELIVERED: "orders:advance:DELIVERED",
+};
+
 async function advanceStatusAction(orderId: string, targetStatus: AdvanceableOrderStatus): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, ADVANCE_CAPABILITY_BY_STATUS[targetStatus]);
+  if (forbidden) return forbidden;
   const t = await getTranslations("seller.orders");
   const locale = await getLocale();
 

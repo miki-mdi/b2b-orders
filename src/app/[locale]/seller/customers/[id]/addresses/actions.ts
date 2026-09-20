@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability } from "@/lib/auth/permissions";
 import { customerAddressInputSchema, fieldErrorsFromZod } from "@/lib/validation/customers";
 import {
   createCustomerAddress,
@@ -18,6 +19,8 @@ export async function createCustomerAddressAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "customers:addresses:write");
+  if (forbidden) return forbidden;
   const parsed = customerAddressInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -40,6 +43,8 @@ export async function updateCustomerAddressAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "customers:addresses:write");
+  if (forbidden) return forbidden;
   const parsed = customerAddressInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -62,6 +67,8 @@ export async function toggleCustomerAddressActiveAction(
   _formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "customers:addresses:deactivate");
+  if (forbidden) return forbidden;
   try {
     await setCustomerAddressActive(session.tenantId, session.userId, id, nextActive);
   } catch (error) {

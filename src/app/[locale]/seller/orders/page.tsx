@@ -1,6 +1,7 @@
 import type { OrderStatus } from "@prisma/client";
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { hasCapability, orderReadStatusScopeFor } from "@/lib/auth/permissions";
 import { listOrdersForTenantPage } from "@/lib/domain/orders/order-service";
 import { computeOrderTotals, type OrderLineForTotals } from "@/lib/domain/orders/order-totals";
 import { clampPage } from "@/lib/pagination";
@@ -42,14 +43,24 @@ export default async function SellerOrdersPage({
   searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
   const session = await requireSellerSession();
+  const statusScope = orderReadStatusScopeFor(session.role);
+  const canCreate = hasCapability(session.role, "orders:create");
   const { status, q, page: pageParam } = await searchParams;
   const t = await getTranslations("seller.orders");
   const tStatus = await getTranslations("seller.orders.status");
   const tCommon = await getTranslations("seller.common");
 
-  const statusFilter = FILTERABLE_STATUSES.includes(status as OrderStatus) ? (status as OrderStatus) : undefined;
+  const filterableStatuses = statusScope
+    ? FILTERABLE_STATUSES.filter((s) => statusScope.includes(s))
+    : FILTERABLE_STATUSES;
+  const statusFilter = filterableStatuses.includes(status as OrderStatus) ? (status as OrderStatus) : undefined;
   const page = clampPage(pageParam);
-  const result = await listOrdersForTenantPage(session.tenantId, { status: statusFilter, search: q || undefined, page });
+  const result = await listOrdersForTenantPage(session.tenantId, {
+    status: statusFilter,
+    search: q || undefined,
+    page,
+    statusIn: statusScope,
+  });
   const orders = result.items;
 
   function buildHref(targetPage: number): string {
@@ -65,12 +76,14 @@ export default async function SellerOrdersPage({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <Link
-          href="/seller/orders/new"
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-        >
-          {t("newOrder")}
-        </Link>
+        {canCreate && (
+          <Link
+            href="/seller/orders/new"
+            className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+          >
+            {t("newOrder")}
+          </Link>
+        )}
       </div>
 
       <form method="GET" className="flex flex-col gap-2 sm:flex-row">
@@ -95,7 +108,7 @@ export default async function SellerOrdersPage({
           className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
         >
           <option value="">{t("filterStatusAll")}</option>
-          {FILTERABLE_STATUSES.map((s) => (
+          {filterableStatuses.map((s) => (
             <option key={s} value={s}>
               {tStatus(s)}
             </option>

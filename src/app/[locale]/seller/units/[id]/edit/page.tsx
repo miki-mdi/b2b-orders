@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability, hasCapability } from "@/lib/auth/permissions";
 import { getUnitOfMeasure } from "@/lib/domain/catalog/unit-of-measure-service";
 import { UnitForm } from "../../unit-form";
 import { updateUnitOfMeasureAction } from "../../actions";
@@ -9,6 +10,8 @@ import { updateUnitOfMeasureAction } from "../../actions";
 export default async function EditUnitPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireSellerSession();
+  requireSellerCapability(session, "catalog:read");
+  const readOnly = !hasCapability(session.role, "catalog:write");
   const t = await getTranslations("seller.units");
   const tCommon = await getTranslations("seller.common");
 
@@ -23,9 +26,9 @@ export default async function EditUnitPage({ params }: { params: Promise<{ id: s
         <Link href="/seller/units" className="text-sm underline underline-offset-2">
           {tCommon("backToList")}
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{t("editTitle")}</h1>
+        <h1 className="mt-2 text-2xl font-semibold">{readOnly ? t("viewTitle") : t("editTitle")}</h1>
       </div>
-      <UnitForm action={updateUnitOfMeasureAction.bind(null, id)} unit={unit} />
+      <UnitForm action={updateUnitOfMeasureAction.bind(null, id)} unit={unit} readOnly={readOnly} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability, hasCapability } from "@/lib/auth/permissions";
 import { getPriceList } from "@/lib/domain/pricing/price-list-service";
 import { PriceListForm } from "../../price-list-form";
 import { updatePriceListAction } from "../../actions";
@@ -11,6 +12,8 @@ import { DeleteItemForm } from "../items/delete-item-form";
 export default async function EditPriceListPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireSellerSession();
+  requireSellerCapability(session, "pricing:read");
+  const canWrite = hasCapability(session.role, "pricing:write");
   const t = await getTranslations("seller.priceLists");
   const tItems = await getTranslations("seller.priceListItems");
   const tCommon = await getTranslations("seller.common");
@@ -27,20 +30,22 @@ export default async function EditPriceListPage({ params }: { params: Promise<{ 
           <Link href="/seller/price-lists" className="text-sm underline underline-offset-2">
             {tCommon("backToList")}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold">{t("editTitle")}</h1>
+          <h1 className="mt-2 text-2xl font-semibold">{canWrite ? t("editTitle") : t("viewTitle")}</h1>
         </div>
-        <PriceListForm action={updatePriceListAction.bind(null, id)} priceList={priceList} />
+        <PriceListForm action={updatePriceListAction.bind(null, id)} priceList={priceList} readOnly={!canWrite} />
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold">{tItems("title")}</h2>
-          <Link
-            href={`/seller/price-lists/${id}/items/new`}
-            className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-          >
-            {tCommon("addNew")}
-          </Link>
+          {canWrite && (
+            <Link
+              href={`/seller/price-lists/${id}/items/new`}
+              className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+            >
+              {tCommon("addNew")}
+            </Link>
+          )}
         </div>
 
         {priceList.items.length === 0 ? (
@@ -61,9 +66,11 @@ export default async function EditPriceListPage({ params }: { params: Promise<{ 
                   <th scope="col" className="px-4 py-2 font-medium">
                     {tItems("columnPrice")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    {tCommon("actions")}
-                  </th>
+                  {canWrite && (
+                    <th scope="col" className="px-4 py-2 font-medium">
+                      {tCommon("actions")}
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -76,20 +83,22 @@ export default async function EditPriceListPage({ params }: { params: Promise<{ 
                     <td className="px-4 py-2">
                       {item.price.toString()} {priceList.currency}
                     </td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={`/seller/price-lists/${id}/items/${item.id}/edit`}
-                          className="text-sm underline underline-offset-2"
-                        >
-                          {tCommon("edit")}
-                        </Link>
-                        <DeleteItemForm
-                          action={deletePriceListItemAction.bind(null, item.id)}
-                          label={tItems("deleteAction")}
-                        />
-                      </div>
-                    </td>
+                    {canWrite && (
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/seller/price-lists/${id}/items/${item.id}/edit`}
+                            className="text-sm underline underline-offset-2"
+                          >
+                            {tCommon("edit")}
+                          </Link>
+                          <DeleteItemForm
+                            action={deletePriceListItemAction.bind(null, item.id)}
+                            label={tItems("deleteAction")}
+                          />
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

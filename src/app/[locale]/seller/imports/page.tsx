@@ -1,10 +1,12 @@
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { Link } from "@/i18n/navigation";
 import { IMPORT_TYPES } from "@/lib/domain/import/types";
 
 export default async function SellerImportsPage() {
-  await requireSellerSession();
+  const session = await requireSellerSession();
+  requireSellerCapability(session, "imports:manage");
   const t = await getTranslations("seller.imports");
 
   return (

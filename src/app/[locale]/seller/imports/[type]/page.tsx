@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { IMPORT_TEMPLATES } from "@/lib/domain/import/templates";
 import { IMPORT_TYPES, type ImportType } from "@/lib/domain/import/types";
 import { ImportWizard } from "./import-wizard";
@@ -12,7 +13,9 @@ function isImportType(value: string): value is ImportType {
 export default async function SellerImportTypePage({ params }: { params: Promise<{ type: string }> }) {
   // Guard only - actual tenant scoping happens per-request inside the
   // Server Actions this page's wizard calls, same pattern as /seller/exports.
-  await requireSellerSession();
+  // Those actions also re-check imports:manage themselves (Phase 1F-B1).
+  const session = await requireSellerSession();
+  requireSellerCapability(session, "imports:manage");
   const { type } = await params;
 
   if (!isImportType(type)) {

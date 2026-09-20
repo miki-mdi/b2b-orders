@@ -1,4 +1,5 @@
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireApiCapability } from "@/lib/auth/permissions";
 import { toCsv } from "@/lib/domain/export/csv";
 import { csvResponseHeaders } from "@/lib/domain/export/csv-response";
 import { IMPORT_TEMPLATES } from "@/lib/domain/import/templates";
@@ -10,7 +11,9 @@ function isImportType(value: string): value is ImportType {
 
 export async function GET(_request: Request, { params }: { params: Promise<{ type: string }> }) {
   // Guard only, same as every other seller route - see /seller/exports/page.tsx's own comment.
-  await requireSellerSession();
+  const session = await requireSellerSession();
+  const denied = requireApiCapability(session, "imports:manage");
+  if (denied) return denied;
   const { type } = await params;
 
   if (!isImportType(type)) {

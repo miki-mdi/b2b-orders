@@ -1,13 +1,27 @@
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { hasCapability } from "@/lib/auth/permissions";
 import { Link } from "@/i18n/navigation";
 
 export default async function SellerLayout({ children }: { children: React.ReactNode }) {
   // Redirects away if this isn't an active seller (TENANT) session - see
   // src/lib/auth/require-seller.ts. Every page under this layout can
   // therefore assume a valid tenantId is available without re-checking.
-  await requireSellerSession();
+  const session = await requireSellerSession();
   const t = await getTranslations("seller.nav");
+
+  // Cosmetic only (Phase 1F-B1) - each linked page enforces its own
+  // capability server-side (src/lib/auth/permissions.ts); hiding a link here
+  // never substitutes for that. Every role has some order-read capability,
+  // so Orders is never hidden.
+  const showCategories = hasCapability(session.role, "catalog:read");
+  const showUnits = hasCapability(session.role, "catalog:read");
+  const showProducts = hasCapability(session.role, "catalog:read");
+  const showCustomers = hasCapability(session.role, "customers:read");
+  const showPriceLists = hasCapability(session.role, "pricing:read");
+  const showAudit = hasCapability(session.role, "audit:read");
+  const showImports = hasCapability(session.role, "imports:manage");
+  const showExports = hasCapability(session.role, "exports:read");
 
   return (
     <div className="flex min-h-full flex-1 flex-col md:flex-row">
@@ -19,33 +33,49 @@ export default async function SellerLayout({ children }: { children: React.React
         <Link href="/seller" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
           {t("dashboard")}
         </Link>
-        <Link href="/seller/categories" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("categories")}
-        </Link>
-        <Link href="/seller/units" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("units")}
-        </Link>
-        <Link href="/seller/products" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("products")}
-        </Link>
-        <Link href="/seller/customers" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("customers")}
-        </Link>
-        <Link href="/seller/price-lists" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("priceLists")}
-        </Link>
+        {showCategories && (
+          <Link href="/seller/categories" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            {t("categories")}
+          </Link>
+        )}
+        {showUnits && (
+          <Link href="/seller/units" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            {t("units")}
+          </Link>
+        )}
+        {showProducts && (
+          <Link href="/seller/products" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            {t("products")}
+          </Link>
+        )}
+        {showCustomers && (
+          <Link href="/seller/customers" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            {t("customers")}
+          </Link>
+        )}
+        {showPriceLists && (
+          <Link href="/seller/price-lists" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            {t("priceLists")}
+          </Link>
+        )}
         <Link href="/seller/orders" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
           {t("orders")}
         </Link>
-        <Link href="/seller/audit" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("audit")}
-        </Link>
-        <Link href="/seller/imports" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("imports")}
-        </Link>
-        <Link href="/seller/exports" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("exports")}
-        </Link>
+        {showAudit && (
+          <Link href="/seller/audit" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            {t("audit")}
+          </Link>
+        )}
+        {showImports && (
+          <Link href="/seller/imports" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            {t("imports")}
+          </Link>
+        )}
+        {showExports && (
+          <Link href="/seller/exports" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            {t("exports")}
+          </Link>
+        )}
         <Link
           href="/"
           className="rounded px-2 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100 md:mt-auto dark:hover:bg-zinc-800"

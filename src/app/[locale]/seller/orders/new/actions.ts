@@ -3,6 +3,7 @@
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability, hasCapability } from "@/lib/auth/permissions";
 import { cartLinesQuerySchema, sellerOrderInputSchema, fieldErrorsFromZod } from "@/lib/validation/orders";
 import { resolveCartLine, type ResolvedCartLine } from "@/lib/domain/orders/cart-resolution";
 import { submitOrder } from "@/lib/domain/orders/order-service";
@@ -22,6 +23,9 @@ export async function resolveSellerOrderLinesAction(
   items: { productUnitId: string; quantity: number }[]
 ): Promise<{ lines: ResolvedCartLine[] }> {
   const session = await requireSellerSession();
+  if (!hasCapability(session.role, "orders:create")) {
+    return { lines: [] };
+  }
   const parsed = cartLinesQuerySchema.safeParse(items);
   if (!parsed.success || parsed.data.length === 0 || !customerId) {
     return { lines: [] };
@@ -35,6 +39,8 @@ export async function resolveSellerOrderLinesAction(
 
 export async function createSellerOrderAction(prevState: FormState, formData: FormData): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "orders:create");
+  if (forbidden) return forbidden;
   const locale = await getLocale();
 
   let basketLines: unknown = [];

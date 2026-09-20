@@ -13,16 +13,34 @@ export function PricingSection({
   priceLists,
   currentPriceListId,
   currentDiscountPercent,
+  readOnly = false,
 }: {
   assignAction: (prevState: FormState, formData: FormData) => Promise<FormState>;
   discountAction: (prevState: FormState, formData: FormData) => Promise<FormState>;
   priceLists: PriceList[];
   currentPriceListId: string | null;
   currentDiscountPercent: string | null;
+  readOnly?: boolean;
 }) {
   const [assignState, assignFormAction, assignPending] = useActionState(assignAction, initialFormState);
   const [discountState, discountFormAction, discountPending] = useActionState(discountAction, initialFormState);
   const t = useTranslations("seller.pricing");
+
+  if (readOnly) {
+    const assignedPriceList = priceLists.find((priceList) => priceList.id === currentPriceListId);
+    return (
+      <div className="flex flex-col gap-4 text-sm">
+        <div>
+          <span className="block font-medium text-zinc-500">{t("assignedPriceList")}</span>
+          <p>{assignedPriceList?.name ?? t("noAssignment")}</p>
+        </div>
+        <div>
+          <span className="block font-medium text-zinc-500">{t("discount")}</span>
+          <p>{currentDiscountPercent !== null ? `${currentDiscountPercent}%` : "—"}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

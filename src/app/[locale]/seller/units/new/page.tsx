@@ -1,9 +1,13 @@
 import { getTranslations } from "next-intl/server";
+import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { Link } from "@/i18n/navigation";
 import { UnitForm } from "../unit-form";
 import { createUnitOfMeasureAction } from "../actions";
 
 export default async function NewUnitPage() {
+  const session = await requireSellerSession();
+  requireSellerCapability(session, "catalog:write");
   const t = await getTranslations("seller.units");
   const tCommon = await getTranslations("seller.common");
 

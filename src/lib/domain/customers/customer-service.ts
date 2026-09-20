@@ -1,4 +1,4 @@
-import type { CustomerInput } from "@/lib/validation/customers";
+import type { CustomerContactInfoInput, CustomerInput } from "@/lib/validation/customers";
 import type { ScopedTransactionClient } from "@/lib/db/scoped-client";
 import { withTenantContext } from "@/lib/db/with-tenant";
 import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
@@ -127,6 +127,47 @@ export async function updateCustomerInTx(
 
 export async function updateCustomer(tenantId: string, actorUserId: string, id: string, input: CustomerInput) {
   return withTenantContext(tenantId, (tx) => updateCustomerInTx(tx, tenantId, actorUserId, id, input));
+}
+
+/**
+ * Sales Rep's "limited edit" (Phase 1F-B1) - writes only contactEmail/
+ * contactPhone/notes, never code/name/isActive/etc., regardless of what the
+ * caller's validated input happens to contain. This is the defense-in-depth
+ * layer: the Server Action already validates against the narrower
+ * customerContactInfoInputSchema (which has no other fields to smuggle in),
+ * but this function's own column list is the actual guarantee, the same
+ * "domain layer re-checks, not just the form" pattern this codebase already
+ * uses elsewhere (e.g. confirmOrder's negative-quantity check).
+ */
+export async function updateCustomerContactInfo(
+  tenantId: string,
+  actorUserId: string,
+  id: string,
+  input: CustomerContactInfoInput
+) {
+  return withTenantContext(tenantId, async (tx) => {
+    const before = await tx.customer.findUniqueOrThrow({ where: { id } });
+    const after = await tx.customer.update({
+      where: { id },
+      data: {
+        contactEmail: input.contactEmail ?? null,
+        contactPhone: input.contactPhone ?? null,
+        notes: input.notes ?? null,
+      },
+    });
+
+    await writeAuditLogEntry(tx, {
+      tenantId,
+      actorUserId,
+      actingContext: "TENANT",
+      entityType: "Customer",
+      entityId: id,
+      action: "UPDATE",
+      oldValue: before,
+      newValue: after,
+    });
+    return after;
+  });
 }
 
 export async function setCustomerActive(tenantId: string, actorUserId: string, id: string, isActive: boolean) {

@@ -4,12 +4,15 @@ import { revalidatePath } from "next/cache";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability } from "@/lib/auth/permissions";
 import { unitOfMeasureInputSchema, fieldErrorsFromZod } from "@/lib/validation/catalog";
 import { createUnitOfMeasure, setUnitOfMeasureActive, updateUnitOfMeasure } from "@/lib/domain/catalog/unit-of-measure-service";
 import type { FormState } from "@/lib/forms/form-state";
 
 export async function createUnitOfMeasureAction(_prevState: FormState, formData: FormData): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   const parsed = unitOfMeasureInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -34,6 +37,8 @@ export async function updateUnitOfMeasureAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   const parsed = unitOfMeasureInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -59,6 +64,8 @@ export async function toggleUnitOfMeasureActiveAction(
   _formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   try {
     await setUnitOfMeasureActive(session.tenantId, session.userId, id, nextActive);
   } catch (error) {

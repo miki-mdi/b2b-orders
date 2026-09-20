@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability, hasCapability } from "@/lib/auth/permissions";
 import { listCustomersPage } from "@/lib/domain/customers/customer-service";
 import { clampPage } from "@/lib/pagination";
 import { Link } from "@/i18n/navigation";
@@ -10,6 +11,10 @@ import { toggleCustomerActiveAction } from "./actions";
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const session = await requireSellerSession();
+  requireSellerCapability(session, "customers:read");
+  const canCreate = hasCapability(session.role, "customers:write:full");
+  const canEdit = canCreate || hasCapability(session.role, "customers:write:limited");
+  const canActivate = hasCapability(session.role, "customers:activate");
   const { page: pageParam } = await searchParams;
   const t = await getTranslations("seller.customers");
   const tCommon = await getTranslations("seller.common");
@@ -21,12 +26,14 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <Link
-          href="/seller/customers/new"
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-        >
-          {tCommon("addNew")}
-        </Link>
+        {canCreate && (
+          <Link
+            href="/seller/customers/new"
+            className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+          >
+            {tCommon("addNew")}
+          </Link>
+        )}
       </div>
 
       {customers.length === 0 ? (
@@ -67,14 +74,16 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
                       <Link href={`/seller/customers/${customer.id}/edit`} className="text-sm underline underline-offset-2">
-                        {tCommon("edit")}
+                        {canEdit ? tCommon("edit") : tCommon("view")}
                       </Link>
-                      <ToggleActiveForm
-                        action={toggleCustomerActiveAction.bind(null, customer.id, !customer.isActive)}
-                        isActive={customer.isActive}
-                        deactivateLabel={tCommon("deactivate")}
-                        reactivateLabel={tCommon("reactivate")}
-                      />
+                      {canActivate && (
+                        <ToggleActiveForm
+                          action={toggleCustomerActiveAction.bind(null, customer.id, !customer.isActive)}
+                          isActive={customer.isActive}
+                          deactivateLabel={tCommon("deactivate")}
+                          reactivateLabel={tCommon("reactivate")}
+                        />
+                      )}
                     </div>
                   </td>
                 </tr>

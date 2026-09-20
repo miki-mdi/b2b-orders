@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { hasCapability, orderReadStatusScopeFor } from "@/lib/auth/permissions";
 import { getDashboardMetrics } from "@/lib/domain/dashboard/dashboard-service";
 import { Link } from "@/i18n/navigation";
 import { OrderStatusBadge } from "@/components/seller/order-status-badge";
@@ -13,6 +14,16 @@ function MetricCard({ label, value }: { label: string; value: number }) {
   );
 }
 
+/**
+ * Phase 1F-B1: the same getDashboardMetrics() query/result every role
+ * always used (no new queries per the brief) - only which cards, recent
+ * orders, and quick-links get rendered varies by role. The recent-orders
+ * filtering below isn't just cosmetic for Warehouse/Driver: it keeps the
+ * dashboard from surfacing an order (number, customer name, status) those
+ * roles' order-read scope (src/lib/auth/permissions.ts) wouldn't let them
+ * open directly - see orderReadStatusScopeFor's use on the order list/detail
+ * pages for the same restriction enforced at the data layer there.
+ */
 export default async function SellerDashboardPage() {
   const session = await requireSellerSession();
   const t = await getTranslations("seller.dashboard");
@@ -21,25 +32,67 @@ export default async function SellerDashboardPage() {
   const locale = await getLocale();
 
   const metrics = await getDashboardMetrics(session.tenantId);
+  const canManageCatalog = hasCapability(session.role, "catalog:write");
+  const canManageCustomers = hasCapability(session.role, "customers:write:full");
+  const canManagePricing = hasCapability(session.role, "pricing:write");
 
-  const pipelineCards = [
-    { label: t("awaitingReview"), value: metrics.statusCounts.SUBMITTED },
-    { label: t("confirmedCount"), value: metrics.statusCounts.CONFIRMED },
-    { label: t("pickingCount"), value: metrics.statusCounts.PICKING },
-    { label: t("readyCount"), value: metrics.statusCounts.READY },
-    { label: t("outForDeliveryCount"), value: metrics.statusCounts.OUT_FOR_DELIVERY },
-    { label: t("deliveredCount"), value: metrics.statusCounts.DELIVERED },
-    { label: t("cancelledCount"), value: metrics.statusCounts.CANCELLED },
-    { label: t("activeCustomers"), value: metrics.activeCustomers },
-    { label: t("activeProducts"), value: metrics.activeProductUnits },
-  ];
+  const orderScope = orderReadStatusScopeFor(session.role);
+  let pipelineCards: { label: string; value: number }[];
+  let recentOrders = metrics.recentOrders;
+  if (orderScope) {
+    recentOrders = recentOrders.filter((order) => orderScope.includes(order.status));
+  }
+
+  switch (session.role) {
+    case "WAREHOUSE_WORKER":
+      pipelineCards = [
+        { label: t("confirmedCount"), value: metrics.statusCounts.CONFIRMED },
+        { label: t("pickingCount"), value: metrics.statusCounts.PICKING },
+        { label: t("readyCount"), value: metrics.statusCounts.READY },
+      ];
+      break;
+    case "DELIVERY_DRIVER":
+      pipelineCards = [
+        { label: t("readyCount"), value: metrics.statusCounts.READY },
+        { label: t("outForDeliveryCount"), value: metrics.statusCounts.OUT_FOR_DELIVERY },
+        { label: t("deliveredCount"), value: metrics.statusCounts.DELIVERED },
+      ];
+      break;
+    case "SALES_REP":
+      pipelineCards = [
+        { label: t("awaitingReview"), value: metrics.statusCounts.SUBMITTED },
+        { label: t("confirmedCount"), value: metrics.statusCounts.CONFIRMED },
+        { label: t("pickingCount"), value: metrics.statusCounts.PICKING },
+        { label: t("readyCount"), value: metrics.statusCounts.READY },
+        { label: t("outForDeliveryCount"), value: metrics.statusCounts.OUT_FOR_DELIVERY },
+        { label: t("deliveredCount"), value: metrics.statusCounts.DELIVERED },
+        { label: t("cancelledCount"), value: metrics.statusCounts.CANCELLED },
+      ];
+      break;
+    default:
+      pipelineCards = [
+        { label: t("awaitingReview"), value: metrics.statusCounts.SUBMITTED },
+        { label: t("confirmedCount"), value: metrics.statusCounts.CONFIRMED },
+        { label: t("pickingCount"), value: metrics.statusCounts.PICKING },
+        { label: t("readyCount"), value: metrics.statusCounts.READY },
+        { label: t("outForDeliveryCount"), value: metrics.statusCounts.OUT_FOR_DELIVERY },
+        { label: t("deliveredCount"), value: metrics.statusCounts.DELIVERED },
+        { label: t("cancelledCount"), value: metrics.statusCounts.CANCELLED },
+        { label: t("activeCustomers"), value: metrics.activeCustomers },
+        { label: t("activeProducts"), value: metrics.activeProductUnits },
+      ];
+  }
 
   const quickLinks = [
-    { href: "/seller/categories" as const, label: t("categoriesCard") },
-    { href: "/seller/units" as const, label: t("unitsCard") },
-    { href: "/seller/products" as const, label: t("productsCard") },
-    { href: "/seller/customers" as const, label: t("customersCard") },
-    { href: "/seller/price-lists" as const, label: t("priceListsCard") },
+    ...(canManageCatalog
+      ? [
+          { href: "/seller/categories" as const, label: t("categoriesCard") },
+          { href: "/seller/units" as const, label: t("unitsCard") },
+          { href: "/seller/products" as const, label: t("productsCard") },
+        ]
+      : []),
+    ...(canManageCustomers ? [{ href: "/seller/customers" as const, label: t("customersCard") }] : []),
+    ...(canManagePricing ? [{ href: "/seller/price-lists" as const, label: t("priceListsCard") }] : []),
   ];
 
   return (
@@ -60,7 +113,7 @@ export default async function SellerDashboardPage() {
 
       <div className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{t("recentActivityTitle")}</h2>
-        {metrics.recentOrders.length === 0 ? (
+        {recentOrders.length === 0 ? (
           <p className="rounded border border-dashed border-zinc-300 p-8 text-center text-zinc-500 dark:border-zinc-700">
             {t("recentActivityEmpty")}
           </p>
@@ -87,7 +140,7 @@ export default async function SellerDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {metrics.recentOrders.map((order) => (
+                {recentOrders.map((order) => (
                   <tr key={order.id} className="border-t border-zinc-200 dark:border-zinc-800">
                     <td className="px-4 py-2">{order.orderNumber}</td>
                     <td className="px-4 py-2">{order.customerName}</td>
@@ -108,20 +161,22 @@ export default async function SellerDashboardPage() {
         )}
       </div>
 
-      <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{t("quickLinksTitle")}</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {quickLinks.map((card) => (
-            <Link
-              key={card.href}
-              href={card.href}
-              className="rounded-lg border border-zinc-200 p-4 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
-            >
-              {card.label}
-            </Link>
-          ))}
+      {quickLinks.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{t("quickLinksTitle")}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {quickLinks.map((card) => (
+              <Link
+                key={card.href}
+                href={card.href}
+                className="rounded-lg border border-zinc-200 p-4 text-sm font-medium hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
+              >
+                {card.label}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

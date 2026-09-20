@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { listCustomers } from "@/lib/domain/customers/customer-service";
 import { listCustomerAddresses } from "@/lib/domain/customers/customer-address-service";
 import { listBuyerCatalog, listBuyerCategories } from "@/lib/domain/catalog/buyer-catalog-service";
@@ -13,6 +14,7 @@ export default async function NewSellerOrderPage({
   searchParams: Promise<{ customerId?: string; category?: string; q?: string }>;
 }) {
   const session = await requireSellerSession();
+  requireSellerCapability(session, "orders:create");
   const { customerId, category, q } = await searchParams;
   const t = await getTranslations("seller.orders");
   const locale = await getLocale();

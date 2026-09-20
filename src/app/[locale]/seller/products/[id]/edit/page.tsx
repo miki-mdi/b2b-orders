@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability, hasCapability } from "@/lib/auth/permissions";
 import { getProduct } from "@/lib/domain/catalog/product-service";
 import { listCategories } from "@/lib/domain/catalog/category-service";
 import { StatusBadge } from "@/components/seller/status-badge";
@@ -13,6 +14,8 @@ import { toggleProductUnitActiveAction } from "../units/actions";
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireSellerSession();
+  requireSellerCapability(session, "catalog:read");
+  const canWrite = hasCapability(session.role, "catalog:write");
   const t = await getTranslations("seller.products");
   const tUnits = await getTranslations("seller.productUnits");
   const tCommon = await getTranslations("seller.common");
@@ -30,20 +33,22 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           <Link href="/seller/products" className="text-sm underline underline-offset-2">
             {tCommon("backToList")}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold">{t("editTitle")}</h1>
+          <h1 className="mt-2 text-2xl font-semibold">{canWrite ? t("editTitle") : t("viewTitle")}</h1>
         </div>
-        <ProductForm action={updateProductAction.bind(null, id)} product={product} categories={categories} />
+        <ProductForm action={updateProductAction.bind(null, id)} product={product} categories={categories} readOnly={!canWrite} />
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold">{tUnits("title")}</h2>
-          <Link
-            href={`/seller/products/${id}/units/new`}
-            className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-          >
-            {tCommon("addNew")}
-          </Link>
+          {canWrite && (
+            <Link
+              href={`/seller/products/${id}/units/new`}
+              className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
+            >
+              {tCommon("addNew")}
+            </Link>
+          )}
         </div>
 
         {product.units.length === 0 ? (
@@ -95,14 +100,16 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-3">
                         <Link href={`/seller/products/${id}/units/${unit.id}/edit`} className="text-sm underline underline-offset-2">
-                          {tCommon("edit")}
+                          {canWrite ? tCommon("edit") : tCommon("view")}
                         </Link>
-                        <ToggleActiveForm
-                          action={toggleProductUnitActiveAction.bind(null, unit.id, !unit.isActive)}
-                          isActive={unit.isActive}
-                          deactivateLabel={tCommon("deactivate")}
-                          reactivateLabel={tCommon("reactivate")}
-                        />
+                        {canWrite && (
+                          <ToggleActiveForm
+                            action={toggleProductUnitActiveAction.bind(null, unit.id, !unit.isActive)}
+                            isActive={unit.isActive}
+                            deactivateLabel={tCommon("deactivate")}
+                            reactivateLabel={tCommon("reactivate")}
+                          />
+                        )}
                       </div>
                     </td>
                   </tr>

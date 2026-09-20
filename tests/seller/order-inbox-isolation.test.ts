@@ -82,4 +82,30 @@ describe("seller order inbox: listing, filtering, and tenant isolation", () => {
     });
     expect(rows.map((o) => o.id)).not.toContain(betaOrderId);
   });
+
+  // Phase 1F-B1: role-based order-read status scoping (src/lib/auth/permissions.ts).
+  // alphaOrderId is SUBMITTED - outside both Warehouse's and Driver's scope.
+  it("getOrderForTenant returns null (not the order) when its status is outside allowedStatuses", async () => {
+    const asWarehouse = await getOrderForTenant(alpha.tenantId, alphaOrderId, ["CONFIRMED", "PICKING", "READY"]);
+    expect(asWarehouse).toBeNull();
+
+    const asAdmin = await getOrderForTenant(alpha.tenantId, alphaOrderId, null);
+    expect(asAdmin?.id).toBe(alphaOrderId);
+  });
+
+  it("listOrdersForTenant's statusIn scopes the whole list, independent of the status dropdown filter", async () => {
+    const scoped = await listOrdersForTenant(alpha.tenantId, { statusIn: ["CONFIRMED", "PICKING", "READY"] });
+    expect(scoped.map((o) => o.id)).not.toContain(alphaOrderId);
+
+    const unscoped = await listOrdersForTenant(alpha.tenantId, { statusIn: null });
+    expect(unscoped.map((o) => o.id)).toContain(alphaOrderId);
+  });
+
+  it("an explicit status filter outside statusIn's scope returns zero rows rather than widening the scope", async () => {
+    const result = await listOrdersForTenant(alpha.tenantId, {
+      status: "SUBMITTED",
+      statusIn: ["CONFIRMED", "PICKING", "READY"],
+    });
+    expect(result).toHaveLength(0);
+  });
 });

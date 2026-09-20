@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import {
   listAuditLogActors,
   listAuditLogEntries,
@@ -53,6 +54,7 @@ function buildQuery(params: AuditSearchParams, page: number): string {
 
 export default async function SellerAuditLogPage({ searchParams }: { searchParams: Promise<AuditSearchParams> }) {
   const session = await requireSellerSession();
+  requireSellerCapability(session, "audit:read");
   const params = await searchParams;
   const t = await getTranslations("seller.audit");
   const tCommon = await getTranslations("seller.common");

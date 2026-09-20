@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability } from "@/lib/auth/permissions";
 import { productInputSchema, fieldErrorsFromZod } from "@/lib/validation/catalog";
 import { createProduct, setProductActive, updateProduct } from "@/lib/domain/catalog/product-service";
 import type { FormState } from "@/lib/forms/form-state";
@@ -21,6 +22,8 @@ function errorToFormState(error: unknown): FormState {
 
 export async function createProductAction(_prevState: FormState, formData: FormData): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   const parsed = productInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -40,6 +43,8 @@ export async function createProductAction(_prevState: FormState, formData: FormD
 
 export async function updateProductAction(id: string, _prevState: FormState, formData: FormData): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   const parsed = productInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -62,6 +67,8 @@ export async function toggleProductActiveAction(
   _formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "catalog:write");
+  if (forbidden) return forbidden;
   try {
     await setProductActive(session.tenantId, session.userId, id, nextActive);
   } catch (error) {

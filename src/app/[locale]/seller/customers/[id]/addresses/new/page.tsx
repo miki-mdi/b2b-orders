@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { getCustomer } from "@/lib/domain/customers/customer-service";
 import { AddressForm } from "../address-form";
 import { createCustomerAddressAction } from "../actions";
@@ -9,6 +10,7 @@ import { createCustomerAddressAction } from "../actions";
 export default async function NewCustomerAddressPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: customerId } = await params;
   const session = await requireSellerSession();
+  requireSellerCapability(session, "customers:addresses:write");
   const t = await getTranslations("seller.addresses");
   const tCommon = await getTranslations("seller.common");
 

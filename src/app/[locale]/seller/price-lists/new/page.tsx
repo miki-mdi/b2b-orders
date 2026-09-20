@@ -1,9 +1,13 @@
 import { getTranslations } from "next-intl/server";
+import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { Link } from "@/i18n/navigation";
 import { PriceListForm } from "../price-list-form";
 import { createPriceListAction } from "../actions";
 
 export default async function NewPriceListPage() {
+  const session = await requireSellerSession();
+  requireSellerCapability(session, "pricing:write");
   const t = await getTranslations("seller.priceLists");
   const tCommon = await getTranslations("seller.common");
 

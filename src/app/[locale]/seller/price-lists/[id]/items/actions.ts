@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability } from "@/lib/auth/permissions";
 import { priceListItemInputSchema, fieldErrorsFromZod } from "@/lib/validation/pricing";
 import {
   createPriceListItem,
@@ -25,6 +26,8 @@ export async function createPriceListItemAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "pricing:write");
+  if (forbidden) return forbidden;
   const parsed = priceListItemInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -47,6 +50,8 @@ export async function updatePriceListItemAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "pricing:write");
+  if (forbidden) return forbidden;
   const parsed = priceListItemInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -68,6 +73,8 @@ export async function deletePriceListItemAction(
   _formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "pricing:write");
+  if (forbidden) return forbidden;
   try {
     await deletePriceListItem(session.tenantId, session.userId, id);
   } catch (error) {

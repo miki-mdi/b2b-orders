@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { getPriceListItem } from "@/lib/domain/pricing/price-list-item-service";
 import { PriceListItemForm } from "../../price-list-item-form";
 import { updatePriceListItemAction } from "../../actions";
@@ -13,6 +14,7 @@ export default async function EditPriceListItemPage({
 }) {
   const { id: priceListId, itemId } = await params;
   const session = await requireSellerSession();
+  requireSellerCapability(session, "pricing:write");
   const t = await getTranslations("seller.priceListItems");
   const tCommon = await getTranslations("seller.common");
 

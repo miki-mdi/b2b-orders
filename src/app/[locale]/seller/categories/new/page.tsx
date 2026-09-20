@@ -1,9 +1,13 @@
 import { getTranslations } from "next-intl/server";
+import { requireSellerSession } from "@/lib/auth/require-seller";
+import { requireSellerCapability } from "@/lib/auth/permissions";
 import { Link } from "@/i18n/navigation";
 import { CategoryForm } from "../category-form";
 import { createCategoryAction } from "../actions";
 
 export default async function NewCategoryPage() {
+  const session = await requireSellerSession();
+  requireSellerCapability(session, "catalog:write");
   const t = await getTranslations("seller.categories");
   const tCommon = await getTranslations("seller.common");
 

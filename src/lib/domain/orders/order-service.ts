@@ -25,14 +25,37 @@ export function getOrderForCustomer(tenantId: string, customerId: string, orderI
   );
 }
 
-/** Seller-side: one order across the whole tenant, regardless of which customer placed it. */
-export function getOrderForTenant(tenantId: string, orderId: string) {
-  return withTenantContext(tenantId, (tx) =>
-    tx.order.findUnique({ where: { id: orderId }, include: { lines: true, customer: true } })
-  );
+/**
+ * Seller-side: one order across the whole tenant, regardless of which
+ * customer placed it. `allowedStatuses` (Phase 1F-B1 role-based order-read
+ * scoping - see src/lib/auth/permissions.ts's ORDER_READ_STATUS_SCOPE) makes
+ * an order outside a restricted role's allowed statuses come back as null,
+ * exactly like a cross-tenant order does - a direct URL guess can't reveal
+ * whether the order exists at all, let alone its data. Omit it (or pass
+ * null) for an unrestricted read.
+ */
+export function getOrderForTenant(tenantId: string, orderId: string, allowedStatuses?: OrderStatus[] | null) {
+  return withTenantContext(tenantId, async (tx) => {
+    const order = await tx.order.findUnique({ where: { id: orderId }, include: { lines: true, customer: true } });
+    if (order && allowedStatuses && !allowedStatuses.includes(order.status)) {
+      return null;
+    }
+    return order;
+  });
 }
 
-export type OrderInboxFilter = { status?: OrderStatus; search?: string };
+export type OrderInboxFilter = { status?: OrderStatus; search?: string; statusIn?: OrderStatus[] | null };
+
+/** Combines the inbox's own single-status dropdown filter with a role-based status scope (Phase 1F-B1) - an explicit filter outside the allowed scope returns zero rows rather than silently widening it. */
+function resolveStatusWhere(filter: OrderInboxFilter): { status?: OrderStatus | { in: OrderStatus[] } } {
+  if (filter.statusIn) {
+    if (filter.status) {
+      return filter.statusIn.includes(filter.status) ? { status: filter.status } : { status: { in: [] } };
+    }
+    return { status: { in: filter.statusIn } };
+  }
+  return filter.status ? { status: filter.status } : {};
+}
 
 /**
  * Seller-side inbox: every order under the tenant, optionally filtered by
@@ -46,7 +69,7 @@ export function listOrdersForTenant(tenantId: string, filter: OrderInboxFilter =
 
     return tx.order.findMany({
       where: {
-        ...(filter.status ? { status: filter.status } : {}),
+        ...resolveStatusWhere(filter),
         ...(search
           ? {
               OR: [
@@ -62,14 +85,20 @@ export function listOrdersForTenant(tenantId: string, filter: OrderInboxFilter =
   });
 }
 
-export type OrderInboxPageRequest = { status?: OrderStatus; search?: string; page?: number; pageSize?: number };
+export type OrderInboxPageRequest = {
+  status?: OrderStatus;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  statusIn?: OrderStatus[] | null;
+};
 
 function orderInboxWhere(filter: OrderInboxFilter) {
   const search = clampSearchTerm(filter.search);
   const orderNumberSearch = search && /^\d+$/.test(search) ? Number(search) : undefined;
 
   return {
-    ...(filter.status ? { status: filter.status } : {}),
+    ...resolveStatusWhere(filter),
     ...(search
       ? {
           OR: [

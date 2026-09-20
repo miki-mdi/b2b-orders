@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
+import { checkActionCapability } from "@/lib/auth/permissions";
 import { priceListInputSchema, fieldErrorsFromZod } from "@/lib/validation/pricing";
 import { createPriceList, setPriceListActive, updatePriceList } from "@/lib/domain/pricing/price-list-service";
 import type { FormState } from "@/lib/forms/form-state";
@@ -18,6 +19,8 @@ function errorToFormState(error: unknown): FormState {
 
 export async function createPriceListAction(_prevState: FormState, formData: FormData): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "pricing:write");
+  if (forbidden) return forbidden;
   const parsed = priceListInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -41,6 +44,8 @@ export async function updatePriceListAction(
   formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "pricing:write");
+  if (forbidden) return forbidden;
   const parsed = priceListInputSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { status: "error", message: "Please fix the errors below.", fieldErrors: fieldErrorsFromZod(parsed.error) };
@@ -63,6 +68,8 @@ export async function togglePriceListActiveAction(
   _formData: FormData
 ): Promise<FormState> {
   const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "pricing:write");
+  if (forbidden) return forbidden;
   try {
     await setPriceListActive(session.tenantId, session.userId, id, nextActive);
   } catch (error) {
