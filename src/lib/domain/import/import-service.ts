@@ -4,7 +4,7 @@ import { writeAuditLogEntry } from "@/lib/domain/audit/audit-log";
 import { toCsv } from "@/lib/domain/export/csv";
 import { parseCsv } from "./csv-parser";
 import { planAndExecuteRows, type EntityImportOps } from "./driver";
-import { assertRowCount } from "./security";
+import { assertRowCount, IMPORT_CONFIRM_TRANSACTION_TIMEOUT_MS, IMPORT_PREVIEW_TRANSACTION_TIMEOUT_MS } from "./security";
 import { createCategoryImportOps } from "./categories-import";
 import { createUnitImportOps } from "./units-import";
 import { createProductImportOps } from "./products-import";
@@ -47,6 +47,11 @@ function resolveOps(importType: ImportType, headers: string[]) {
  * rest of the app uses (Layer 2 + RLS) - nothing in this transaction ever
  * calls an `...InTx` create/update function, so nothing is written, and
  * the transaction is simply left to commit-with-no-changes.
+ *
+ * Passes an explicit, longer-than-default transaction timeout
+ * (IMPORT_PREVIEW_TRANSACTION_TIMEOUT_MS, security.ts) - at up to
+ * MAX_IMPORT_ROWS rows, the per-row FK-reference resolution this does can
+ * exceed Prisma's 5s client default well within the supported row cap.
  */
 export async function previewImport(
   importType: ImportType,
@@ -58,8 +63,10 @@ export async function previewImport(
   assertRowCount(parsed.rows.length);
   const ops = resolveOps(importType, parsed.headers);
 
-  const result = await withTenantContext(tenantId, (tx) =>
-    planAndExecuteRows(tx, tenantId, actorUserId, parsed, ops, "preview", "")
+  const result = await withTenantContext(
+    tenantId,
+    (tx) => planAndExecuteRows(tx, tenantId, actorUserId, parsed, ops, "preview", ""),
+    { timeout: IMPORT_PREVIEW_TRANSACTION_TIMEOUT_MS }
   );
 
   return {
@@ -104,6 +111,17 @@ function toResultCsv(rows: ImportRowPlan[], malformedRows: { row: number; messag
  * (validation failure, duplicate key, unresolved reference) is simply
  * never attempted - that is a normal "rejected" outcome, not a failure that
  * aborts the batch. See driver.ts's header comment for that distinction.
+ *
+ * Passes an explicit, longer-than-default transaction timeout
+ * (IMPORT_CONFIRM_TRANSACTION_TIMEOUT_MS, security.ts) - this transaction
+ * does the same per-row reference resolution as preview PLUS the actual
+ * writes and a per-row audit log entry, and at up to MAX_IMPORT_ROWS rows
+ * that real work already exceeds Prisma's 5s client default on ordinary
+ * hardware (discovered via tests/import/performance-sanity.test.ts during
+ * Phase 1F-B2 closure) - not a bug in the import logic itself, just a
+ * too-tight default for a deliberately single-transaction, up-to-5,000-row
+ * write. See with-tenant.ts's TenantTransactionOptions doc comment for why
+ * this is scoped to only this call site, not a global Prisma default change.
  */
 export async function confirmImport(
   importType: ImportType,
@@ -118,29 +136,33 @@ export async function confirmImport(
   const batchId = randomUUID();
   const reason = `Imported via CSV batch ${batchId}`;
 
-  const result = await withTenantContext(tenantId, async (tx) => {
-    const planResult = await planAndExecuteRows(tx, tenantId, actorUserId, parsed, ops, "confirm", reason);
+  const result = await withTenantContext(
+    tenantId,
+    async (tx) => {
+      const planResult = await planAndExecuteRows(tx, tenantId, actorUserId, parsed, ops, "confirm", reason);
 
-    await writeAuditLogEntry(tx, {
-      tenantId,
-      actorUserId,
-      actingContext: "TENANT",
-      entityType: "Import",
-      entityId: `${importType}:${batchId}`,
-      action: "CREATE",
-      newValue: {
-        batchId,
-        fileName,
-        created: planResult.created,
-        updated: planResult.updated,
-        unchanged: planResult.unchanged,
-        rejected: planResult.rejected + parsed.malformedRows.length,
-      },
-      reason: `Imported ${fileName}: ${planResult.created} created, ${planResult.updated} updated, ${planResult.unchanged} unchanged, ${planResult.rejected + parsed.malformedRows.length} rejected`,
-    });
+      await writeAuditLogEntry(tx, {
+        tenantId,
+        actorUserId,
+        actingContext: "TENANT",
+        entityType: "Import",
+        entityId: `${importType}:${batchId}`,
+        action: "CREATE",
+        newValue: {
+          batchId,
+          fileName,
+          created: planResult.created,
+          updated: planResult.updated,
+          unchanged: planResult.unchanged,
+          rejected: planResult.rejected + parsed.malformedRows.length,
+        },
+        reason: `Imported ${fileName}: ${planResult.created} created, ${planResult.updated} updated, ${planResult.unchanged} unchanged, ${planResult.rejected + parsed.malformedRows.length} rejected`,
+      });
 
-    return planResult;
-  });
+      return planResult;
+    },
+    { timeout: IMPORT_CONFIRM_TRANSACTION_TIMEOUT_MS }
+  );
 
   const summary = {
     batchId,

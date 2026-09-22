@@ -2,6 +2,15 @@ import { prisma, type ScopedTransactionClient } from "./scoped-client";
 import { requireCustomerId, requireTenantId, runWithTenantContext } from "./tenant-context";
 
 /**
+ * Prisma's own interactive-transaction options (`maxWait`/`timeout`/
+ * `isolationLevel`), typed off `prisma.$transaction`'s own signature rather
+ * than hand-written, the same way ./scoped-client.ts derives
+ * ScopedTransactionClient - keeps this in sync with whatever Prisma version
+ * is installed instead of drifting from a copied type.
+ */
+export type TenantTransactionOptions = NonNullable<Parameters<typeof prisma.$transaction>[1]>;
+
+/**
  * The entry point seller-side domain services use to run tenant-scoped
  * database work. Combines both enforcement layers from
  * docs/SECURITY_AND_MULTI_TENANCY.md §3:
@@ -22,10 +31,21 @@ import { requireCustomerId, requireTenantId, runWithTenantContext } from "./tena
  * requires disabling Prisma's prepared statements via `?pgbouncer=true` on
  * the connection string - unrelated to SET LOCAL, and not a concern for the
  * local Phase 0 setup, which talks to Postgres directly with no pooler).
+ *
+ * `options` (Phase 1F-B2 closure): optional, forwarded as-is to
+ * `prisma.$transaction` - every existing caller that omits it keeps Prisma's
+ * client defaults (`maxWait: 2000`, `timeout: 5000`) exactly as before. Only
+ * confirmed/previewed CSV imports (src/lib/domain/import/import-service.ts)
+ * pass an explicit longer `timeout` today, because that is the one code
+ * path whose transaction deliberately spans up to MAX_IMPORT_ROWS rows of
+ * work in a single all-or-nothing transaction (see that module's own
+ * comments) - every other caller's transaction is small enough that the
+ * tight 5s default is a useful fast-fail safety net, not a limitation.
  */
 export async function withTenantContext<T>(
   tenantId: string | null | undefined,
-  fn: (tx: ScopedTransactionClient) => Promise<T>
+  fn: (tx: ScopedTransactionClient) => Promise<T>,
+  options?: TenantTransactionOptions
 ): Promise<T> {
   const resolvedTenantId = requireTenantId(tenantId);
 
@@ -33,7 +53,7 @@ export async function withTenantContext<T>(
     prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${resolvedTenantId}, true)`;
       return fn(tx);
-    })
+    }, options)
   );
 }
 
