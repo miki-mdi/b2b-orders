@@ -40,6 +40,7 @@ const EXPECTED: Record<Capability, Record<TenantRole, boolean>> = {
   "audit:read": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: false },
   "exports:read": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: false },
   "imports:manage": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: false },
+  "dashboard:sales-analytics": { SELLER_ADMIN: true, SALES_REP: true, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: false },
 };
 
 describe("hasCapability", () => {

@@ -40,7 +40,8 @@ export type Capability =
   | "orders:advance:DELIVERED"
   | "audit:read"
   | "exports:read"
-  | "imports:manage";
+  | "imports:manage"
+  | "dashboard:sales-analytics";
 
 const SELLER_ADMIN_CAPABILITIES: readonly Capability[] = [
   "catalog:read",
@@ -63,6 +64,7 @@ const SELLER_ADMIN_CAPABILITIES: readonly Capability[] = [
   "audit:read",
   "exports:read",
   "imports:manage",
+  "dashboard:sales-analytics",
 ];
 
 const SALES_REP_CAPABILITIES: readonly Capability[] = [
@@ -74,6 +76,7 @@ const SALES_REP_CAPABILITIES: readonly Capability[] = [
   "orders:read:all",
   "orders:create",
   "orders:confirm",
+  "dashboard:sales-analytics",
 ];
 
 const WAREHOUSE_WORKER_CAPABILITIES: readonly Capability[] = [
