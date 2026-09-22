@@ -7,6 +7,7 @@ import { checkActionCapability, orderReadStatusScopeFor, type Capability } from 
 import { confirmOrderInputSchema } from "@/lib/validation/orders";
 import { confirmOrder, advanceOrderStatus, type AdvanceableOrderStatus } from "@/lib/domain/orders/order-fulfillment-service";
 import { getOrderForTenant } from "@/lib/domain/orders/order-service";
+import { assignDriverToOrder, getOwnActiveTenantMembershipId } from "@/lib/domain/orders/driver-assignment-service";
 import type { FormState } from "@/lib/forms/form-state";
 
 export async function confirmOrderAction(orderId: string, prevState: FormState, formData: FormData): Promise<FormState> {
@@ -68,7 +69,23 @@ async function advanceStatusAction(orderId: string, targetStatus: AdvanceableOrd
   const t = await getTranslations("seller.orders");
   const locale = await getLocale();
 
-  const result = await advanceOrderStatus(session.tenantId, session.userId, orderId, targetStatus);
+  // Delivery Driver ownership invariant (Phase 1F-B3): resolved fresh from
+  // the database, never trusted from the session role alone, and enforced
+  // inside advanceOrderStatus's own transaction - see
+  // driver-assignment-service.ts's getOwnActiveTenantMembershipId. Every
+  // other role never computes this, so their behavior is unchanged.
+  let requireDriverMembershipId: string | undefined;
+  if (session.role === "DELIVERY_DRIVER") {
+    const membershipId = await getOwnActiveTenantMembershipId(session.tenantId, session.userId);
+    if (!membershipId) {
+      return { status: "error", message: t("confirmErrorGeneric") };
+    }
+    requireDriverMembershipId = membershipId;
+  }
+
+  const result = await advanceOrderStatus(session.tenantId, session.userId, orderId, targetStatus, {
+    requireDriverMembershipId,
+  });
   if (!result.ok) {
     return { status: "error", message: t("confirmErrorGeneric") };
   }
@@ -91,4 +108,22 @@ export async function markOutForDeliveryAction(orderId: string, _prevState: Form
 }
 export async function markDeliveredAction(orderId: string, _prevState: FormState, _formData: FormData) {
   return advanceStatusAction(orderId, "DELIVERED");
+}
+
+export async function assignDriverAction(orderId: string, _prevState: FormState, formData: FormData): Promise<FormState> {
+  const session = await requireSellerSession();
+  const forbidden = checkActionCapability(session, "orders:assign-driver");
+  if (forbidden) return forbidden;
+  const t = await getTranslations("seller.orders.driverAssignment");
+  const locale = await getLocale();
+
+  const raw = formData.get("membershipId");
+  const targetMembershipId = typeof raw === "string" && raw.length > 0 ? raw : null;
+
+  const result = await assignDriverToOrder(session.tenantId, session.userId, orderId, targetMembershipId);
+  if (!result.ok) {
+    return { status: "error", message: t("errorGeneric") };
+  }
+
+  return redirect({ href: `/seller/orders/${orderId}`, locale });
 }

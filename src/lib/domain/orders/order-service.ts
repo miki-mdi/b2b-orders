@@ -26,25 +26,59 @@ export function getOrderForCustomer(tenantId: string, customerId: string, orderI
 }
 
 /**
+ * Phase 1F-B3: narrows a Delivery Driver's order-read scope (both
+ * getOrderForTenant and the inbox listings below) to only their own
+ * assigned orders - additive to, never a replacement for, the existing
+ * allowedStatuses/statusIn scoping from Phase 1F-B1. Populated only for a
+ * Delivery Driver session (see driver-assignment-service.ts's
+ * getOwnActiveTenantMembershipId and the seller/orders pages) - every other
+ * role never passes this, so their scoping is completely unaffected.
+ */
+export type DriverReadScope = { membershipId: string };
+
+/**
  * Seller-side: one order across the whole tenant, regardless of which
  * customer placed it. `allowedStatuses` (Phase 1F-B1 role-based order-read
  * scoping - see src/lib/auth/permissions.ts's ORDER_READ_STATUS_SCOPE) makes
  * an order outside a restricted role's allowed statuses come back as null,
  * exactly like a cross-tenant order does - a direct URL guess can't reveal
  * whether the order exists at all, let alone its data. Omit it (or pass
- * null) for an unrestricted read.
+ * null) for an unrestricted read. `driverScope` (Phase 1F-B3) additionally
+ * requires the order's assignedDriverMembershipId to match - an unassigned
+ * order or one assigned to a different driver comes back null the same way.
  */
-export function getOrderForTenant(tenantId: string, orderId: string, allowedStatuses?: OrderStatus[] | null) {
+export function getOrderForTenant(
+  tenantId: string,
+  orderId: string,
+  allowedStatuses?: OrderStatus[] | null,
+  driverScope?: DriverReadScope
+) {
   return withTenantContext(tenantId, async (tx) => {
-    const order = await tx.order.findUnique({ where: { id: orderId }, include: { lines: true, customer: true } });
-    if (order && allowedStatuses && !allowedStatuses.includes(order.status)) {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: {
+        lines: true,
+        customer: true,
+        assignedDriverMembership: { include: { user: { select: { name: true } } } },
+      },
+    });
+    if (!order) return null;
+    if (allowedStatuses && !allowedStatuses.includes(order.status)) {
+      return null;
+    }
+    if (driverScope && order.assignedDriverMembershipId !== driverScope.membershipId) {
       return null;
     }
     return order;
   });
 }
 
-export type OrderInboxFilter = { status?: OrderStatus; search?: string; statusIn?: OrderStatus[] | null };
+export type OrderInboxFilter = {
+  status?: OrderStatus;
+  search?: string;
+  statusIn?: OrderStatus[] | null;
+  driverScope?: DriverReadScope;
+};
 
 /** Combines the inbox's own single-status dropdown filter with a role-based status scope (Phase 1F-B1) - an explicit filter outside the allowed scope returns zero rows rather than silently widening it. */
 function resolveStatusWhere(filter: OrderInboxFilter): { status?: OrderStatus | { in: OrderStatus[] } } {
@@ -70,6 +104,7 @@ export function listOrdersForTenant(tenantId: string, filter: OrderInboxFilter =
     return tx.order.findMany({
       where: {
         ...resolveStatusWhere(filter),
+        ...(filter.driverScope ? { assignedDriverMembershipId: filter.driverScope.membershipId } : {}),
         ...(search
           ? {
               OR: [
@@ -91,6 +126,7 @@ export type OrderInboxPageRequest = {
   page?: number;
   pageSize?: number;
   statusIn?: OrderStatus[] | null;
+  driverScope?: DriverReadScope;
 };
 
 function orderInboxWhere(filter: OrderInboxFilter) {
@@ -99,6 +135,7 @@ function orderInboxWhere(filter: OrderInboxFilter) {
 
   return {
     ...resolveStatusWhere(filter),
+    ...(filter.driverScope ? { assignedDriverMembershipId: filter.driverScope.membershipId } : {}),
     ...(search
       ? {
           OR: [

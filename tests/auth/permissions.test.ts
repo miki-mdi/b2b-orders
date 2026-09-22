@@ -37,6 +37,7 @@ const EXPECTED: Record<Capability, Record<TenantRole, boolean>> = {
   "orders:advance:READY": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: true, DELIVERY_DRIVER: false },
   "orders:advance:OUT_FOR_DELIVERY": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: true },
   "orders:advance:DELIVERED": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: true },
+  "orders:assign-driver": { SELLER_ADMIN: true, SALES_REP: true, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: false },
   "audit:read": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: false },
   "exports:read": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: false },
   "imports:manage": { SELLER_ADMIN: true, SALES_REP: false, WAREHOUSE_WORKER: false, DELIVERY_DRIVER: false },

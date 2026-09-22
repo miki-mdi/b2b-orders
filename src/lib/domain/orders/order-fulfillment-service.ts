@@ -169,7 +169,20 @@ export type AdvanceableOrderStatus = Extract<OrderStatus, "PICKING" | "READY" | 
 export type AdvanceOrderStatusResult =
   | { ok: true; order: Prisma.OrderGetPayload<{ include: { lines: true } }> }
   | { ok: false; reason: "ORDER_NOT_FOUND" }
+  | { ok: false; reason: "NOT_ASSIGNED_DRIVER" }
   | { ok: false; reason: "INVALID_TRANSITION" };
+
+export type AdvanceOrderStatusOptions = {
+  // Phase 1F-B3: when set, the transition is rejected as NOT_ASSIGNED_DRIVER
+  // unless the order's assignedDriverMembershipId equals this exact value -
+  // checked inside the same transaction as the status read/write, so there
+  // is no window for a reassignment to race the check. Callers only ever
+  // pass this for a Delivery Driver session (see
+  // src/app/[locale]/seller/orders/[id]/actions.ts) - omitted entirely for
+  // every other role, so Seller Admin/Sales Rep/Warehouse Worker behavior is
+  // byte-for-byte unchanged.
+  requireDriverMembershipId?: string;
+};
 
 const EVENT_TYPE_BY_STATUS: Record<AdvanceableOrderStatus, OrderEventType> = {
   PICKING: "PICKING",
@@ -182,12 +195,19 @@ export async function advanceOrderStatus(
   tenantId: string,
   actorUserId: string,
   orderId: string,
-  targetStatus: AdvanceableOrderStatus
+  targetStatus: AdvanceableOrderStatus,
+  options?: AdvanceOrderStatusOptions
 ): Promise<AdvanceOrderStatusResult> {
   const result = await withTenantContext(tenantId, async (tx) => {
     const order = await tx.order.findUnique({ where: { id: orderId } });
     if (!order) {
       return { ok: false as const, reason: "ORDER_NOT_FOUND" as const };
+    }
+    if (
+      options?.requireDriverMembershipId &&
+      order.assignedDriverMembershipId !== options.requireDriverMembershipId
+    ) {
+      return { ok: false as const, reason: "NOT_ASSIGNED_DRIVER" as const };
     }
     if (!isValidOrderTransition(order.status, targetStatus)) {
       return { ok: false as const, reason: "INVALID_TRANSITION" as const };

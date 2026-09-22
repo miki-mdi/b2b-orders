@@ -2,7 +2,8 @@ import type { OrderStatus } from "@prisma/client";
 import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
 import { hasCapability, orderReadStatusScopeFor } from "@/lib/auth/permissions";
-import { listOrdersForTenantPage } from "@/lib/domain/orders/order-service";
+import { listOrdersForTenantPage, type DriverReadScope } from "@/lib/domain/orders/order-service";
+import { getOwnActiveTenantMembershipId } from "@/lib/domain/orders/driver-assignment-service";
 import { computeOrderTotals, type OrderLineForTotals } from "@/lib/domain/orders/order-totals";
 import { clampPage } from "@/lib/pagination";
 import { Link } from "@/i18n/navigation";
@@ -45,6 +46,19 @@ export default async function SellerOrdersPage({
   const session = await requireSellerSession();
   const statusScope = orderReadStatusScopeFor(session.role);
   const canCreate = hasCapability(session.role, "orders:create");
+  // A Delivery Driver session with no resolvable active membership (should
+  // not normally happen - requireSellerSession() already implies one) fails
+  // closed to an empty inbox rather than falling through to an unscoped read.
+  let driverScope: DriverReadScope | undefined;
+  let driverHasNoMembership = false;
+  if (session.role === "DELIVERY_DRIVER") {
+    const membershipId = await getOwnActiveTenantMembershipId(session.tenantId, session.userId);
+    if (membershipId) {
+      driverScope = { membershipId };
+    } else {
+      driverHasNoMembership = true;
+    }
+  }
   const { status, q, page: pageParam } = await searchParams;
   const t = await getTranslations("seller.orders");
   const tStatus = await getTranslations("seller.orders.status");
@@ -55,12 +69,15 @@ export default async function SellerOrdersPage({
     : FILTERABLE_STATUSES;
   const statusFilter = filterableStatuses.includes(status as OrderStatus) ? (status as OrderStatus) : undefined;
   const page = clampPage(pageParam);
-  const result = await listOrdersForTenantPage(session.tenantId, {
-    status: statusFilter,
-    search: q || undefined,
-    page,
-    statusIn: statusScope,
-  });
+  const result = driverHasNoMembership
+    ? { items: [], page: 1, pageSize: 1, total: 0, totalPages: 1 }
+    : await listOrdersForTenantPage(session.tenantId, {
+        status: statusFilter,
+        search: q || undefined,
+        page,
+        statusIn: statusScope,
+        driverScope,
+      });
   const orders = result.items;
 
   function buildHref(targetPage: number): string {

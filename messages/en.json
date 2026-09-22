@@ -352,6 +352,15 @@
         "generic": "{action} on {entity}",
         "reasonLabel": "Reason: {reason}",
         "actorSystem": "System"
+      },
+      "driverAssignment": {
+        "title": "Delivery driver",
+        "assignedTo": "Assigned to {name}",
+        "unassigned": "Unassigned",
+        "unassignedOption": "Unassigned",
+        "selectLabel": "Delivery driver",
+        "submit": "Save",
+        "errorGeneric": "Could not update the driver assignment."
       }
     },
     "audit": {

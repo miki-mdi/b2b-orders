@@ -38,6 +38,7 @@ export type Capability =
   | "orders:advance:READY"
   | "orders:advance:OUT_FOR_DELIVERY"
   | "orders:advance:DELIVERED"
+  | "orders:assign-driver"
   | "audit:read"
   | "exports:read"
   | "imports:manage"
@@ -61,6 +62,7 @@ const SELLER_ADMIN_CAPABILITIES: readonly Capability[] = [
   "orders:advance:READY",
   "orders:advance:OUT_FOR_DELIVERY",
   "orders:advance:DELIVERED",
+  "orders:assign-driver",
   "audit:read",
   "exports:read",
   "imports:manage",
@@ -76,6 +78,7 @@ const SALES_REP_CAPABILITIES: readonly Capability[] = [
   "orders:read:all",
   "orders:create",
   "orders:confirm",
+  "orders:assign-driver",
   "dashboard:sales-analytics",
 ];
 

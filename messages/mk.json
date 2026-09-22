@@ -352,6 +352,15 @@
         "generic": "{action} на {entity}",
         "reasonLabel": "Причина: {reason}",
         "actorSystem": "Систем"
+      },
+      "driverAssignment": {
+        "title": "Возач за достава",
+        "assignedTo": "Доделено на {name}",
+        "unassigned": "Недоделено",
+        "unassignedOption": "Недоделено",
+        "selectLabel": "Возач за достава",
+        "submit": "Зачувај",
+        "errorGeneric": "Доделувањето на возач не можеше да се ажурира."
       }
     },
     "audit": {

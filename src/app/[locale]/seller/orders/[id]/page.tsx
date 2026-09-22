@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
 import { hasCapability, orderReadStatusScopeFor } from "@/lib/auth/permissions";
-import { getOrderForTenant } from "@/lib/domain/orders/order-service";
+import { getOrderForTenant, type DriverReadScope } from "@/lib/domain/orders/order-service";
+import { getOwnActiveTenantMembershipId, listTenantDriverOptions } from "@/lib/domain/orders/driver-assignment-service";
 import { listOrderActivity } from "@/lib/domain/orders/order-activity-service";
 import {
   computeLineFulfillment,
@@ -16,7 +17,14 @@ import { OrderStatusBadge } from "@/components/seller/order-status-badge";
 import { OrderActivityTimeline } from "@/components/seller/order-activity-timeline";
 import { ConfirmOrderForm } from "./confirm-order-form";
 import { AdvanceStatusForm } from "./advance-status-form";
-import { markDeliveredAction, markOutForDeliveryAction, markPickingAction, markReadyAction } from "./actions";
+import { AssignDriverForm } from "./assign-driver-form";
+import {
+  assignDriverAction,
+  markDeliveredAction,
+  markOutForDeliveryAction,
+  markPickingAction,
+  markReadyAction,
+} from "./actions";
 
 type AddressSnapshot = {
   recipientName: string;
@@ -35,7 +43,18 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
   const tCommon = await getTranslations("seller.common");
   const locale = await getLocale();
 
-  const order = await getOrderForTenant(session.tenantId, id, orderReadStatusScopeFor(session.role));
+  let driverScope: DriverReadScope | undefined;
+  if (session.role === "DELIVERY_DRIVER") {
+    const membershipId = await getOwnActiveTenantMembershipId(session.tenantId, session.userId);
+    if (!membershipId) {
+      // Fails closed: a driver session with no resolvable active membership
+      // sees no orders at all, same as one belonging to another driver.
+      notFound();
+    }
+    driverScope = { membershipId };
+  }
+
+  const order = await getOrderForTenant(session.tenantId, id, orderReadStatusScopeFor(session.role), driverScope);
   if (!order) {
     notFound();
   }
@@ -44,8 +63,12 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
   const canAdvanceReady = hasCapability(session.role, "orders:advance:READY");
   const canAdvanceOutForDelivery = hasCapability(session.role, "orders:advance:OUT_FOR_DELIVERY");
   const canAdvanceDelivered = hasCapability(session.role, "orders:advance:DELIVERED");
+  const canAssignDriver = hasCapability(session.role, "orders:assign-driver");
+  const isTerminal = order.status === "DELIVERED" || order.status === "CANCELLED";
+  const driverOptions = canAssignDriver ? await listTenantDriverOptions(session.tenantId) : [];
   const activity = await listOrderActivity(session.tenantId, id);
   const tActivity = await getTranslations("seller.orders.activity");
+  const tDriver = await getTranslations("seller.orders.driverAssignment");
 
   const lineInputs: OrderLineForTotals[] = order.lines.map((line) => ({
     requestedQty: Number(line.requestedQty),
@@ -75,6 +98,25 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
         <span className="text-sm text-zinc-500">
           {t("placedBy", { name: order.placedByName, role: order.placedByRole })}
         </span>
+      </div>
+
+      <div className="flex flex-col gap-2 text-sm">
+        <h2 className="font-semibold">{tDriver("title")}</h2>
+        <p className="text-zinc-600 dark:text-zinc-400">
+          {order.assignedDriverMembership
+            ? tDriver("assignedTo", { name: order.assignedDriverMembership.user.name })
+            : tDriver("unassigned")}
+        </p>
+        {canAssignDriver && !isTerminal && (
+          <AssignDriverForm
+            action={assignDriverAction.bind(null, order.id)}
+            drivers={driverOptions}
+            currentMembershipId={order.assignedDriverMembershipId}
+            unassignedLabel={tDriver("unassignedOption")}
+            selectLabel={tDriver("selectLabel")}
+            submitLabel={tDriver("submit")}
+          />
+        )}
       </div>
 
       {order.status === "CANCELLED" && (

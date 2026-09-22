@@ -126,7 +126,16 @@ model TenantMembership {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // Phase 1F-B3: lets Order.assignedDriverMembership use a composite,
+  // same-tenant-safe FK ([assignedDriverMembershipId, tenantId] -> [id,
+  // tenantId]) instead of a bare id FK - see docs/SESSION_HANDOFF.md's
+  // Phase 1F-B3 section for the full rationale. Redundant with `id` alone
+  // being unique, kept solely to satisfy Postgres's composite-FK requirement
+  // that the referenced column set itself be unique.
+  assignedOrders Order[] @relation("OrderAssignedDriver")
+
   @@unique([userId, tenantId])
+  @@unique([id, tenantId])
   @@index([tenantId, isActive])
 }
 
@@ -563,6 +572,12 @@ model Order {
   deliveredWithIssues     Boolean @default(false)
   deliveredWithIssuesNote String?
 
+  // Phase 1F-B3: which Delivery Driver membership is responsible for this
+  // order, or unassigned (null). Nullable, no default - "unassigned" is a
+  // first-class state, not a migration artifact. See
+  // docs/SESSION_HANDOFF.md's Phase 1F-B3 section for the full design.
+  assignedDriverMembershipId String?
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   submittedAt  DateTime?
@@ -575,7 +590,19 @@ model Order {
   deliveryAddress CustomerAddress? @relation(fields: [deliveryAddressId], references: [id], onDelete: SetNull)
   lines           OrderLine[]
 
+  // Composite, same-tenant-safe FK: Postgres enforces at the DB level that
+  // the referenced TenantMembership's tenantId always equals this Order's
+  // own tenantId (MATCH SIMPLE means a null assignedDriverMembershipId
+  // exempts the row entirely, so "unassigned" is unaffected). onDelete:
+  // Restrict rather than SetNull - a composite FK's SetNull would null out
+  // BOTH columns, including the required tenantId, which Postgres would
+  // reject outright. Nothing in this codebase deletes a TenantMembership
+  // today; if a future phase adds that, clearing/reassigning any orders
+  // first is the correct order of operations anyway.
+  assignedDriverMembership TenantMembership? @relation("OrderAssignedDriver", fields: [assignedDriverMembershipId, tenantId], references: [id, tenantId], onDelete: Restrict)
+
   @@unique([tenantId, orderNumber])
+  @@index([tenantId, assignedDriverMembershipId, status])
   @@index([tenantId, status])
   @@index([tenantId, customerId])
 }
