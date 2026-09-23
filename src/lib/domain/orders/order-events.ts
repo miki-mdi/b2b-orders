@@ -20,6 +20,7 @@
  * order change if it fails.
  */
 import { logger } from "@/lib/logging/logger";
+import { captureServerException } from "@/lib/observability/sentry-capture.server";
 
 export type OrderEventType =
   | "SUBMITTED"
@@ -66,6 +67,7 @@ export async function publishOrderEvent(event: OrderEvent): Promise<void> {
         orderId: event.orderId,
         error: error instanceof Error ? error.message : String(error),
       });
+      captureServerException(error, { source: "order-events-listener" });
     }
   }
 }

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
+import { captureClientError } from "@/lib/observability/sentry-capture.client";
 
 /**
  * Shared route-segment error boundary (Phase 1E, §7). Reused by
@@ -28,6 +29,7 @@ export function RouteErrorBoundary({ error, retry }: { error: Error & { digest?:
     // header comment for why nothing more sensitive than this ever reaches
     // this component to begin with.
     console.error(error);
+    captureClientError(error);
   }, [error]);
 
   return (
