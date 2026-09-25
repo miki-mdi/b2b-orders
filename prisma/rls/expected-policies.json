@@ -1,0 +1,553 @@
+{
+  "tables": [
+    {
+      "tableName": "_prisma_migrations",
+      "rlsEnabled": false,
+      "rlsForced": false
+    },
+    {
+      "tableName": "Account",
+      "rlsEnabled": false,
+      "rlsForced": false
+    },
+    {
+      "tableName": "AuditLogEntry",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "Category",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "Customer",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "CustomerAddress",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "CustomerMembership",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "CustomerPriceListAssignment",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "CustomerProductVisibility",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "DeliveryRoute",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "FavoriteList",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "FavoriteListItem",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "Order",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "OrderLine",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "PriceList",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "PriceListItem",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "Product",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "ProductUnit",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "Session",
+      "rlsEnabled": false,
+      "rlsForced": false
+    },
+    {
+      "tableName": "Tenant",
+      "rlsEnabled": false,
+      "rlsForced": false
+    },
+    {
+      "tableName": "TenantMembership",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "UnitOfMeasure",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
+      "tableName": "User",
+      "rlsEnabled": false,
+      "rlsForced": false
+    }
+  ],
+  "policies": [
+    {
+      "tableName": "AuditLogEntry",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "Category",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "Customer",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (id = current_setting('app.current_customer_id'::text, true))))",
+      "withCheck": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (id = current_setting('app.current_customer_id'::text, true))))"
+    },
+    {
+      "tableName": "CustomerAddress",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true))))",
+      "withCheck": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true))))"
+    },
+    {
+      "tableName": "CustomerMembership",
+      "policyName": "tenant_isolation_delete",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "DELETE",
+      "qual": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true))))",
+      "withCheck": null
+    },
+    {
+      "tableName": "CustomerMembership",
+      "policyName": "tenant_isolation_insert",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "withCheck": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true))))"
+    },
+    {
+      "tableName": "CustomerMembership",
+      "policyName": "tenant_isolation_select",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "SELECT",
+      "qual": "(((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true)))) OR (\"userId\" = NULLIF(current_setting('app.current_user_id'::text, true), ''::text)))",
+      "withCheck": null
+    },
+    {
+      "tableName": "CustomerMembership",
+      "policyName": "tenant_isolation_update",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "UPDATE",
+      "qual": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true))))",
+      "withCheck": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true))))"
+    },
+    {
+      "tableName": "CustomerPriceListAssignment",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(EXISTS ( SELECT 1\n   FROM \"Customer\" c\n  WHERE ((c.id = \"CustomerPriceListAssignment\".\"customerId\") AND (c.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (c.id = current_setting('app.current_customer_id'::text, true))))))",
+      "withCheck": "(EXISTS ( SELECT 1\n   FROM \"Customer\" c\n  WHERE ((c.id = \"CustomerPriceListAssignment\".\"customerId\") AND (c.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (c.id = current_setting('app.current_customer_id'::text, true))))))"
+    },
+    {
+      "tableName": "CustomerProductVisibility",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(EXISTS ( SELECT 1\n   FROM \"Customer\" c\n  WHERE ((c.id = \"CustomerProductVisibility\".\"customerId\") AND (c.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (c.id = current_setting('app.current_customer_id'::text, true))))))",
+      "withCheck": "(EXISTS ( SELECT 1\n   FROM \"Customer\" c\n  WHERE ((c.id = \"CustomerProductVisibility\".\"customerId\") AND (c.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (c.id = current_setting('app.current_customer_id'::text, true))))))"
+    },
+    {
+      "tableName": "DeliveryRoute",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "FavoriteList",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(EXISTS ( SELECT 1\n   FROM \"Customer\" c\n  WHERE ((c.id = \"FavoriteList\".\"customerId\") AND (c.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (c.id = current_setting('app.current_customer_id'::text, true))))))",
+      "withCheck": "(EXISTS ( SELECT 1\n   FROM \"Customer\" c\n  WHERE ((c.id = \"FavoriteList\".\"customerId\") AND (c.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (c.id = current_setting('app.current_customer_id'::text, true))))))"
+    },
+    {
+      "tableName": "FavoriteListItem",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(EXISTS ( SELECT 1\n   FROM \"FavoriteList\" fl\n  WHERE ((fl.id = \"FavoriteListItem\".\"favoriteListId\") AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (fl.\"customerId\" = current_setting('app.current_customer_id'::text, true))))))",
+      "withCheck": "(EXISTS ( SELECT 1\n   FROM \"FavoriteList\" fl\n  WHERE ((fl.id = \"FavoriteListItem\".\"favoriteListId\") AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (fl.\"customerId\" = current_setting('app.current_customer_id'::text, true))))))"
+    },
+    {
+      "tableName": "Order",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true))))",
+      "withCheck": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) AND ((NULLIF(current_setting('app.current_customer_id'::text, true), ''::text) IS NULL) OR (\"customerId\" = current_setting('app.current_customer_id'::text, true))))"
+    },
+    {
+      "tableName": "OrderLine",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(EXISTS ( SELECT 1\n   FROM \"Order\" o\n  WHERE ((o.id = \"OrderLine\".\"orderId\") AND (o.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)))))",
+      "withCheck": "(EXISTS ( SELECT 1\n   FROM \"Order\" o\n  WHERE ((o.id = \"OrderLine\".\"orderId\") AND (o.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)))))"
+    },
+    {
+      "tableName": "PriceList",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "PriceListItem",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(EXISTS ( SELECT 1\n   FROM \"PriceList\" pl\n  WHERE ((pl.id = \"PriceListItem\".\"priceListId\") AND (pl.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)))))",
+      "withCheck": "(EXISTS ( SELECT 1\n   FROM \"PriceList\" pl\n  WHERE ((pl.id = \"PriceListItem\".\"priceListId\") AND (pl.\"tenantId\" = current_setting('app.current_tenant_id'::text, true)))))"
+    },
+    {
+      "tableName": "Product",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "ProductUnit",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "TenantMembership",
+      "policyName": "tenant_isolation_delete",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "DELETE",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": null
+    },
+    {
+      "tableName": "TenantMembership",
+      "policyName": "tenant_isolation_insert",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "TenantMembership",
+      "policyName": "tenant_isolation_select",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "SELECT",
+      "qual": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) OR (\"userId\" = NULLIF(current_setting('app.current_user_id'::text, true), ''::text)))",
+      "withCheck": null
+    },
+    {
+      "tableName": "TenantMembership",
+      "policyName": "tenant_isolation_update",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "UnitOfMeasure",
+      "policyName": "tenant_isolation",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "ALL",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    }
+  ]
+}

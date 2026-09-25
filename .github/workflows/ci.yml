@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    # Only synthetic, ephemeral, job-local credentials below - never real
+    # secrets. This container and everything in it is destroyed when the
+    # job ends. No .env/.env.local is ever loaded, and no local-dev or
+    # pilot/Railway credential is referenced anywhere in this workflow.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_bootstrap_only_synthetic
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned to match this project's actual local development runtime
+      # (confirmed via `node --version` - v24.x) rather than an assumed LTS.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install dependencies (runs postinstall: prisma generate)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Generate a fresh, synthetic AUTH_SECRET for this run only
+        run: echo "AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - name: Bootstrap synthetic CI database roles and database
+        env:
+          PGPASSWORD: ci_bootstrap_only_synthetic
+        run: |
+          psql -h localhost -U postgres -d postgres <<'SQL'
+          CREATE ROLE b2b_orders_migrator WITH LOGIN PASSWORD 'ci_migrator_synthetic'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+          CREATE ROLE b2b_orders_app WITH LOGIN PASSWORD 'ci_app_synthetic'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+
+          CREATE DATABASE b2b_orders_ci;
+          ALTER DATABASE b2b_orders_ci OWNER TO b2b_orders_migrator;
+          REVOKE ALL ON DATABASE b2b_orders_ci FROM PUBLIC;
+          GRANT CONNECT ON DATABASE b2b_orders_ci TO b2b_orders_migrator, b2b_orders_app;
+          SQL
+
+          psql -h localhost -U postgres -d b2b_orders_ci <<'SQL'
+          ALTER SCHEMA public OWNER TO b2b_orders_migrator;
+          REVOKE ALL ON SCHEMA public FROM PUBLIC;
+          GRANT USAGE ON SCHEMA public TO b2b_orders_app;
+
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO b2b_orders_app;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO b2b_orders_app;
+
+          ALTER DEFAULT PRIVILEGES FOR ROLE b2b_orders_migrator IN SCHEMA public
+            GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO b2b_orders_app;
+          ALTER DEFAULT PRIVILEGES FOR ROLE b2b_orders_migrator IN SCHEMA public
+            GRANT USAGE, SELECT ON SEQUENCES TO b2b_orders_app;
+          SQL
+
+      - name: Set synthetic database URLs for subsequent steps
+        run: |
+          echo "MIGRATE_DATABASE_URL=postgresql://b2b_orders_migrator:ci_migrator_synthetic@localhost:5432/b2b_orders_ci?schema=public" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=postgresql://b2b_orders_app:ci_app_synthetic@localhost:5432/b2b_orders_ci?schema=public" >> "$GITHUB_ENV"
+
+      - name: Prisma validate
+        run: npx prisma validate
+
+      - name: Prisma migrate deploy
+        run: npx prisma migrate deploy
+
+      - name: RLS verification (hard gate)
+        run: npm run rls:verify
+
+      - name: Run tests
+        env:
+          NODE_ENV: test
+          SENTRY_ENABLED: "false"
+          NEXT_PUBLIC_SENTRY_ENABLED: "false"
+        run: npm test
+
+      - name: Build
+        env:
+          NODE_ENV: production
+          SENTRY_ENABLED: "false"
+          NEXT_PUBLIC_SENTRY_ENABLED: "false"
+          NEXT_PUBLIC_SENTRY_DSN: ""
+          NEXT_PUBLIC_SENTRY_ENVIRONMENT: ""
+        run: npm run build
