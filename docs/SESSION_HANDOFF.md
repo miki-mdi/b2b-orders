@@ -2,7 +2,7 @@
 
 Snapshot of where this project stands, for picking work back up in a new session. See [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) for the original phase plan this has been following, and the other `docs/` files for the underlying architecture decisions — this file is a status snapshot, not a replacement for them.
 
-## Status: Phase 0 through Phase 1F-B3 complete and committed; Sentry observability complete; pilot deployment-readiness tooling complete (Railway resources NOT yet provisioned)
+## Status: Phase 0 through Phase 1F-B3 complete and committed; Sentry observability complete; pilot deployment-readiness tooling complete; GitHub remote live and CI proven green (Railway resources NOT yet provisioned)
 
 | Phase | Scope | Commit |
 |---|---|---|
@@ -20,10 +20,11 @@ Snapshot of where this project stands, for picking work back up in a new session
 | Phase 1F-B3 | Delivery Driver order assignment - `Order.assignedDriverMembershipId` (composite tenant-safe FK to `TenantMembership`), `orders:assign-driver` capability, driver read/mutation ownership scoping | `aaff752` |
 | Observability | Privacy-conscious Sentry error/exception reporting - DE-region DSN enforcement, independently-gated server/client enablement, centralized scrubbing, no tracing/replay/source-maps | `a13a86f` |
 | Deployment readiness tooling | Pilot deployment architecture (Railway, not yet provisioned), `prisma generate`/`postinstall` fix, additive-only pilot bootstrap script, RLS catalog-snapshot verification, GitHub Actions CI - see §24 | `149909e` |
+| GitHub remote + CI fix | Private GitHub remote created, `main` pushed, first CI run's YAML syntax error fixed, second CI run green - see §25 | `d1e0f08` |
 
-**Latest commit: `149909e`** ("feat: add pilot deployment readiness tooling") on `main`. Working tree is clean. Nothing has been pushed to a remote (none is configured) - all work is local-only, per every phase's instructions so far.
+**Latest commit: `d1e0f08`** ("fix: correct GitHub Actions YAML syntax") on `main`, pushed and tracked as `origin/main`. Working tree is clean.
 
-**Phase 1F-B3 (Delivery Driver order assignment) is complete.** See §21 below for the full design record. **The Sentry error/exception reporting (observability) phase is also complete** - see §22 below for the full design record. **§23's proposed next-phase scope (org-switcher, import batching, Sentry hardening) remains proposed only, not started, and is no longer what's next** - the session after §22 instead pursued pilot deployment readiness (architecture planning, then implementation), which **is complete as of `149909e`** - see §24 for the full design record and §24's own "Next steps" for the current, explicitly approval-gated execution sequence (commit → GitHub remote → push → CI green → Railway provisioning). **No Railway resources, GitHub remote, or pilot secrets have been created yet.**
+**Phase 1F-B3 (Delivery Driver order assignment) is complete.** See §21 below for the full design record. **The Sentry error/exception reporting (observability) phase is also complete** - see §22 below for the full design record. **§23's proposed next-phase scope (org-switcher, import batching, Sentry hardening) remains proposed only, not started, and is no longer what's next** - the session after §22 instead pursued pilot deployment readiness (architecture planning, then implementation), which **is complete as of `149909e`** - see §24 for the full design record. **The GitHub remote, initial push, and CI verification steps from §24's "Next steps" are now also complete** - see §25. **Only Railway provisioning (§24's final step) remains, still explicitly approval-gated. No Railway resources, pilot secrets, or pilot database have been created, and the local dev DB credential rotation noted in §17 is still outstanding.**
 
 > **Action required before pilot/production, not code:** during Phase 1F-A's browser verification, this project's local `.env.local` (containing the dev Postgres passwords for both the `b2b_orders_app` and `b2b_orders_migrator` roles) was inadvertently read into a tool-call result and so appears in that session's transcript. These are local-dev-only credentials, not used anywhere else, but **rotate both Postgres role passwords and update `.env.local` before this project is ever pointed at a shared, pilot, or production database.** Nothing in the application or its history depends on the specific password values - this is a credential-hygiene action, not a code fix. See §17 for the fuller note.
 
@@ -549,12 +550,35 @@ Local dev's `b2b_orders_migrator` has `CREATEDB` ([README.md](../README.md)) spe
 - Local `AUTH_SECRET` exposure (during the observability phase) was already rotated - see §22's security notes.
 - **The local `b2b_orders_app`/`b2b_orders_migrator` development password exposure (§17) remains outstanding** - still must be rotated before this project is ever pointed at a shared, pilot, or production database. Unaffected by anything in this phase.
 - Pilot database credentials must be **brand-new**, generated fresh at Railway-provisioning time, never reused from local dev (old or rotated) - nothing has been generated yet.
-- No GitHub remote exists. Nothing has been pushed. No Railway resources exist. No real pilot secrets (DB passwords, `AUTH_SECRET`, Sentry DSN) have been generated.
+- **Superseded by §25**: the GitHub remote now exists, `main` has been pushed, and CI has been proven green on it. No Railway resources exist and no real pilot secrets (DB passwords, `AUTH_SECRET`, Sentry DSN) have been generated.
 
 **Next steps - explicitly approval-gated, one at a time, in this order:**
-1. Commit this handoff-docs update (separate from the implementation commit `149909e`).
-2. Create a **private** GitHub remote, push `main`.
-3. Confirm the GitHub Actions CI workflow (§24.5) is actually green on the real remote - it has only been reasoned about and unit/integration-tested locally, never run on GitHub itself.
-4. Only then: provision Railway resources (project, app service, Postgres service, EU West) per the approved architecture (§24.8) and the detailed Railway-specific implementation plan from this session (project topology, corrected least-privilege pilot role SQL, RLS verification queries, migration/deploy workflow, environment variable matrix, domain/TLS/Auth.js config, monitoring, cost guardrails) - every resource-creation, secret-generation, and credential-rotation step within that plan remains its own individual approval gate.
+1. ~~Commit this handoff-docs update (separate from the implementation commit `149909e`).~~ Done.
+2. ~~Create a **private** GitHub remote, push `main`.~~ Done - see §25.
+3. ~~Confirm the GitHub Actions CI workflow (§24.5) is actually green on the real remote.~~ Done - see §25 (required one fix commit, `d1e0f08`, for a YAML syntax error the local-only reasoning/tests couldn't have caught).
+4. **Next up:** provision Railway resources (project, app service, Postgres service, EU West) per the approved architecture (§24.8) and the detailed Railway-specific implementation plan from this session (project topology, corrected least-privilege pilot role SQL, RLS verification queries, migration/deploy workflow, environment variable matrix, domain/TLS/Auth.js config, monitoring, cost guardrails) - every resource-creation, secret-generation, and credential-rotation step within that plan remains its own individual approval gate.
 
-**Do not start any of those steps without explicit, separate approval** - this file is a status snapshot only.
+**Do not start Railway work without explicit, separate approval** - this file is a status snapshot only.
+
+## 25. GitHub remote, initial push, and CI verification (commit `d1e0f08`)
+
+Executes the first three of §24's four "Next steps," one approval at a time, per that section's own gating.
+
+**1. Remote created and configured.** A private GitHub repository was created out-of-band (by the user, not this tooling): [github.com/miki-mdi/b2b-orders](https://github.com/miki-mdi/b2b-orders). `origin` was added pointing at it (`git remote add origin https://github.com/miki-mdi/b2b-orders.git`), confirmed via `git remote -v`.
+
+**2. Initial push.** `git push -u origin main` succeeded (run by the user interactively, since this tooling's permission model blocks it from pushing directly). `main` now tracks `origin/main`; local and remote `main` were confirmed to point at the same commit throughout.
+
+**3. First CI run failed - YAML syntax error, not an application/logic bug.** GitHub Actions rejected `.github/workflows/ci.yml` outright ("Invalid workflow file... error in your yaml syntax on line 41"), so no job ever started. **Root cause**: line 41's step name, `Install dependencies (runs postinstall: prisma generate)`, was an unquoted YAML plain scalar containing a literal `: ` (colon-space) - a sequence YAML reserves for introducing a nested mapping key, which is invalid inside an unquoted scalar. Every other `name:`/`run:`/env line in the file was checked for the same pattern and found clean; this was the only offending line.
+
+**Fix (commit `d1e0f08`, "fix: correct GitHub Actions YAML syntax")**: quoted that one step name -  `- name: "Install dependencies (runs postinstall: prisma generate)"` - a single-line change, no other file touched. Validated locally with `js-yaml` before committing (parses cleanly; all 13 steps and their names/order confirmed unchanged). Since the fix was pure CI config with no application-code impact, the full local quality-gate suite (`npm test`, lint, typecheck, build) was deliberately not re-run for it.
+
+**4. Second CI run succeeded.** With `d1e0f08` pushed, GitHub Actions re-ran the workflow end-to-end (Postgres service container, synthetic role/DB bootstrap, `prisma migrate deploy`, `npm run rls:verify`, `npm test`, lint, typecheck, `prisma validate`, `npm run build`) and it went green. **GitHub Actions CI (§24.5) is now proven on the real remote, not just reasoned about and tested locally.**
+
+**Current state as of this section:**
+- Remote: `https://github.com/miki-mdi/b2b-orders.git` (private), configured as `origin`.
+- `main` tracks `origin/main`; both point at `d1e0f08`.
+- Working tree is clean.
+- CI is green on `origin/main`.
+- **Still not done, unchanged from §24**: no Railway project/service/database, no real pilot secrets (DB passwords, `AUTH_SECRET`, Sentry DSN) generated, no pilot database created, and the local dev DB credential rotation from §17 has not been performed.
+
+**Next up**: Railway provisioning (§24 step 4) - still its own, separate approval gate, not started.
