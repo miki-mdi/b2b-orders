@@ -38,7 +38,7 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Install dependencies (runs postinstall: prisma generate)
+      - name: "Install dependencies (runs postinstall: prisma generate)"
         run: npm ci
 
       - name: Lint
