@@ -17,7 +17,7 @@
  * the migrator or a superuser. See src/lib/bootstrap/bootstrap-service.ts
  * for the atomic transaction/advisory-lock design this orchestrates.
  */
-import "./scripts/load-env";
+import "../scripts/load-env";
 import path from "node:path";
 import { z } from "zod";
 import { prismaBase } from "../src/lib/db/prisma";
