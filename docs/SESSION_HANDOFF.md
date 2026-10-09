@@ -582,3 +582,14 @@ Executes the first three of §24's four "Next steps," one approval at a time, pe
 - **Still not done, unchanged from §24**: no Railway project/service/database, no real pilot secrets (DB passwords, `AUTH_SECRET`, Sentry DSN) generated, no pilot database created, and the local dev DB credential rotation from §17 has not been performed.
 
 **Next up**: Railway provisioning (§24 step 4) - still its own, separate approval gate, not started.
+## 26. Railway pilot database and Seller Admin verification (commit `920fda4`)
+
+Railway pilot PostgreSQL service `postgres-17` is provisioned and contains all 7 Prisma migrations. RLS verification passed. The safe, additive-only pilot bootstrap completed successfully, creating exactly one Tenant, one Seller Admin User, and one SELLER_ADMIN membership.
+
+A relative import in `prisma/bootstrap-pilot.ts` was corrected and pushed in commit `920fda4` (`Fix pilot bootstrap env loader import`). Local lint, typecheck, and bootstrap tests passed.
+
+The Seller Admin login was verified safely from the local Next.js application through a temporary Railway SSH tunnel. Login succeeded and the Seller Admin dashboard loaded successfully. The local `b2b_orders_dev` database was not used or changed during this verification. The local dev server and Railway tunnel were stopped after the test.
+
+Pilot credentials are not recorded in this document. The Railway database password was regenerated during setup and must remain private.
+
+Next up: choose and plan the next product-development phase. Before any schema, database, or feature change, inspect the current codebase and create an approval-gated implementation plan.
