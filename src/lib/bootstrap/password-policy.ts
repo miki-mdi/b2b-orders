@@ -1,7 +1,7 @@
-// Pure validation for the pilot bootstrap admin password - deliberately
-// stricter than the app's ordinary sign-in minimum (src/lib/validation/auth.ts's
-// z.string().min(8)), since this is the first, highest-privilege account a
-// pilot database will ever have.
+// Pure validation for operator-entered pilot account passwords (bootstrap
+// admin, pilot buyer) - deliberately stricter than the app's ordinary
+// sign-in minimum (src/lib/validation/auth.ts's z.string().min(8)), since
+// these are operator-created accounts set up outside the normal sign-up flow.
 const MIN_LENGTH = 12;
 
 export function validatePassword(password: string): { ok: true } | { ok: false; reason: string } {

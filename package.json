@@ -17,6 +17,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:bootstrap-pilot": "tsx prisma/bootstrap-pilot.ts",
+    "db:create-pilot-buyer": "tsx prisma/create-pilot-buyer.ts",
     "rls:verify": "tsx scripts/verify-rls.ts",
     "rls:snapshot": "tsx scripts/snapshot-rls.ts"
   },

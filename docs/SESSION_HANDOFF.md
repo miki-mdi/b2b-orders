@@ -593,3 +593,11 @@ The Seller Admin login was verified safely from the local Next.js application th
 Pilot credentials are not recorded in this document. The Railway database password was regenerated during setup and must remain private.
 
 Next up: choose and plan the next product-development phase. Before any schema, database, or feature change, inspect the current codebase and create an approval-gated implementation plan.
+
+## 27. Pilot buyer test-user tooling (not yet run against Railway)
+
+Added `prisma/create-pilot-buyer.ts` (`npm run db:create-pilot-buyer`) and its core logic in `src/lib/bootstrap/pilot-buyer-service.ts`, following the same conventions as `prisma/bootstrap-pilot.ts`: TTY-only, hidden/confirmed password input (bcrypt, 12 rounds), never imports `prisma/seed.ts` and never deletes, resets, or migrates anything. It attaches one buyer `User` + `CustomerMembership` to the existing customer coded `PILOT-BUYER-001` (never creates the Customer itself), scoped via `withTenantContext` the same way every other seller-side write is.
+
+Idempotent and fail-safe by design: an already-existing active membership is a clean no-op (no duplicate); an existing user with a different name, or an existing-but-deactivated membership, is a refusal with a clear explanation, never a silent overwrite or reactivation. If the email belongs to a compatible existing user with no membership yet, the user is safely reused and the newly entered password is explicitly not applied.
+
+Covered by `tests/bootstrap/pilot-buyer-service.test.ts` - fully mocked (`PilotBuyerTxClient`), no database connection of any kind, local or Railway. Lint and typecheck clean. **Not yet executed against Railway or any real database.**
