@@ -3,24 +3,91 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Brand - deep navy/blue primary, chosen for accessible white-text
+     contrast (Phase 1 visual redesign - presentation-only tokens). */
+  --primary: #1e3a8a;
+  --primary-hover: #1d4ed8;
+  --primary-foreground: #ffffff;
+
+  /* Neutral surfaces/borders - new, distinctly-named tokens (not an
+     override of Tailwind's own default palette/scale) so existing,
+     unmodified pages that already use literal zinc-* utility classes are
+     completely unaffected by this file. */
+  --surface: #ffffff;
+  --border: #e4e4e7;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+
+  --focus-ring: #3b82f6;
+
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+  --danger: #dc2626;
+  --danger-foreground: #ffffff;
+
+  --radius-control: 0.5rem;
+  --radius-surface: 0.75rem;
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.05), 0 1px 3px 0 rgb(0 0 0 / 0.1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-focus-ring: var(--focus-ring);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+
+  --radius-control: var(--radius-control);
+  --radius-surface: var(--radius-surface);
+  --shadow-card: var(--shadow-card);
+
+  /* Modern, reliable system font stack - no network font, no new package. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+
+    --primary: #2563eb;
+    --primary-hover: #3b82f6;
+    --primary-foreground: #ffffff;
+
+    --surface: #18181b;
+    --border: #27272a;
+    --muted: #27272a;
+    --muted-foreground: #a1a1aa;
+
+    --focus-ring: #60a5fa;
+
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --danger: #ef4444;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }

@@ -11,3 +11,13 @@ export const routing = defineRouting({
 });
 
 export type AppLocale = (typeof routing.locales)[number];
+
+// Single source of truth for a locale's short display label (used by
+// src/components/compact-locale-switcher.tsx). Record<AppLocale, string>
+// means TypeScript itself enforces a label for every locale added to
+// `routing.locales` above - adding a future locale only ever touches this
+// one file.
+export const LOCALE_LABELS: Record<AppLocale, string> = {
+  mk: "МК",
+  en: "EN",
+};

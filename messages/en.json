@@ -19,6 +19,7 @@
   },
   "signIn": {
     "title": "Sign in",
+    "subtitle": "Enter your details to access your account",
     "email": "Email",
     "password": "Password",
     "submit": "Sign in",
@@ -27,7 +28,8 @@
     "hidePassword": "Hide password"
   },
   "locale": {
-    "switchTo": "Switch to {locale}"
+    "switchTo": "Switch to {locale}",
+    "switcherLabel": "Language"
   },
   "common": {
     "errorTitle": "Something went wrong",

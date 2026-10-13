@@ -19,6 +19,7 @@
   },
   "signIn": {
     "title": "Најава",
+    "subtitle": "Внесете ги вашите податоци за пристап до сметката",
     "email": "Е-пошта",
     "password": "Лозинка",
     "submit": "Најава",
@@ -27,7 +28,8 @@
     "hidePassword": "Сокриј лозинка"
   },
   "locale": {
-    "switchTo": "Смени на {locale}"
+    "switchTo": "Смени на {locale}",
+    "switcherLabel": "Јазик"
   },
   "common": {
     "errorTitle": "Настана грешка",

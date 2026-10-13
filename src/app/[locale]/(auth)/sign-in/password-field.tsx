@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { FormField, inputStyles } from "@/components/ui/form-field";
 
 /**
  * No existing icon library or inline-SVG convention found anywhere in src/
@@ -38,24 +39,25 @@ export function PasswordField() {
   const [visible, setVisible] = useState(false);
 
   return (
-    <label className="flex flex-col gap-1 text-sm">
-      {t("password")}
-      <span className="relative">
+    <FormField label={t("password")} htmlFor="password">
+      <div className="relative">
         <input
+          id="password"
           name="password"
           type={visible ? "text" : "password"}
           required
-          className="w-full rounded border border-zinc-300 px-3 py-2 pr-9 dark:border-zinc-700"
+          autoComplete="current-password"
+          className={`${inputStyles} pr-10`}
         />
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
           aria-label={visible ? t("hidePassword") : t("showPassword")}
-          className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center justify-center rounded p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="absolute inset-y-0 right-0 flex items-center rounded-control px-3 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <EyeIcon crossed={visible} />
         </button>
-      </span>
-    </label>
+      </div>
+    </FormField>
   );
 }
