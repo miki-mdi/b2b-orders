@@ -22,7 +22,9 @@
     "email": "Email",
     "password": "Password",
     "submit": "Sign in",
-    "error": "Invalid email or password."
+    "error": "Invalid email or password.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "locale": {
     "switchTo": "Switch to {locale}"
