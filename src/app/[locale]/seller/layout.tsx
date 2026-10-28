@@ -42,6 +42,7 @@ export default async function SellerLayout({ children }: { children: React.React
   ];
 
   const secondaryItems = [
+    { href: "/connections", label: (await getTranslations("connections"))("title") },
     ...(showCategories ? [{ href: "/seller/categories", label: t("categories") }] : []),
     ...(showUnits ? [{ href: "/seller/units", label: t("units") }] : []),
     ...(showBuyerRequests ? [{ href: "/seller/buyer-requests", label: t("buyerRequests") }] : []),
