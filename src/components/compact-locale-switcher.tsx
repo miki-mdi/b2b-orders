@@ -33,7 +33,11 @@ export function CompactLocaleSwitcher({ className = "" }: { className?: string }
   }
 
   return (
-    <div role="group" aria-label={t("switcherLabel")} className={`flex items-center gap-1 ${className}`}>
+    <div
+      role="group"
+      aria-label={t("switcherLabel")}
+      className={`flex items-center gap-0.5 rounded-control border border-border bg-muted p-0.5 ${className}`}
+    >
       {routing.locales.map((candidate) => {
         const isActive = candidate === locale;
         return (
@@ -46,8 +50,8 @@ export function CompactLocaleSwitcher({ className = "" }: { className?: string }
             className={
               "rounded-control px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring " +
               (isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground")
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-surface hover:text-foreground")
             }
           >
             {LOCALE_LABELS[candidate]}

@@ -106,6 +106,11 @@
       "rlsForced": true
     },
     {
+      "tableName": "TradingRelationship",
+      "rlsEnabled": true,
+      "rlsForced": true
+    },
+    {
       "tableName": "UnitOfMeasure",
       "rlsEnabled": true,
       "rlsForced": true
@@ -515,6 +520,78 @@
     },
     {
       "tableName": "TenantMembership",
+      "policyName": "tenant_isolation_update",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "UPDATE",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "TradingRelationship",
+      "policyName": "tenant_isolation_delete",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "DELETE",
+      "qual": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))",
+      "withCheck": null
+    },
+    {
+      "tableName": "TradingRelationship",
+      "policyName": "tenant_isolation_insert",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "INSERT",
+      "qual": null,
+      "withCheck": "(\"tenantId\" = current_setting('app.current_tenant_id'::text, true))"
+    },
+    {
+      "tableName": "TradingRelationship",
+      "policyName": "tenant_isolation_select",
+      "permissive": "PERMISSIVE",
+      "roles": [
+        "b",
+        "c",
+        "i",
+        "l",
+        "p",
+        "u",
+        "{",
+        "}"
+      ],
+      "cmd": "SELECT",
+      "qual": "((\"tenantId\" = current_setting('app.current_tenant_id'::text, true)) OR (\"userId\" = NULLIF(current_setting('app.current_user_id'::text, true), ''::text)))",
+      "withCheck": null
+    },
+    {
+      "tableName": "TradingRelationship",
       "policyName": "tenant_isolation_update",
       "permissive": "PERMISSIVE",
       "roles": [

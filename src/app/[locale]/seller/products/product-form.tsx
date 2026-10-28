@@ -2,10 +2,35 @@
 
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
-import { FieldError } from "@/components/forms/field-error";
-import { SubmitButton } from "@/components/forms/submit-button";
+import { FormField, inputStyles } from "@/components/ui/form-field";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { initialFormState, type FormState } from "@/lib/forms/form-state";
-import type { Category, Product } from "@prisma/client";
+import type { Category } from "@prisma/client";
+
+/**
+ * Deliberately narrower than Prisma's Product model (and NOT the result of
+ * getProduct(), which also includes the `units` relation - each unit
+ * carrying Decimal fields like minOrderQty/orderIncrement). A Server
+ * Component passing that full result into this Client Component fails at
+ * runtime ("Only plain objects can be passed to Client Components...
+ * Decimal objects are not supported"), even though it type-checks fine today
+ * - Decimal isn't a plain object, and the units relation isn't needed here
+ * anyway (same bug class as PriceListFormValues in price-list-form.tsx).
+ * Callers must build this plain object explicitly from only the fields the
+ * form actually edits, pre-converting defaultVatRate to a string.
+ */
+export type ProductFormValues = {
+  nameMk: string;
+  nameEn: string;
+  sku: string;
+  categoryId: string | null;
+  barcode: string | null;
+  defaultVatRate: string | null;
+  description: string | null;
+  imageUrl: string | null;
+  isActive: boolean;
+};
 
 export function ProductForm({
   action,
@@ -14,7 +39,7 @@ export function ProductForm({
   readOnly = false,
 }: {
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
-  product?: Product;
+  product?: ProductFormValues;
   categories: Category[];
   readOnly?: boolean;
 }) {
@@ -23,76 +48,56 @@ export function ProductForm({
   const tCommon = useTranslations("seller.common");
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4" noValidate inert={readOnly || undefined}>
+    <form action={formAction} className="flex flex-col gap-4" noValidate inert={readOnly || undefined}>
       {readOnly && (
-        <p className="rounded border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+        <p className="rounded-control border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
           {tCommon("readOnlyNotice")}
         </p>
       )}
-      {state.status === "error" && state.message && !state.fieldErrors && (
-        <p role="alert" className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-          {state.message}
-        </p>
-      )}
+      {state.status === "error" && state.message && !state.fieldErrors && <Alert tone="danger">{state.message}</Alert>}
 
-      {categories.length === 0 && (
-        <p role="alert" className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          {t("noCategoriesWarning")}
-        </p>
-      )}
+      {categories.length === 0 && <Alert tone="warning">{t("noCategoriesWarning")}</Alert>}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="nameMk" className="block text-sm font-medium">
-            {t("nameMk")}
-          </label>
+      {/* Name pair stays adjacent (cols 1-2 of row 1 at every width); SKU
+          joins them on desktop, then Category/Barcode/VAT follow directly
+          after on row 2 - same logical grouping as before, just laid out
+          as one 3-col grid instead of three separate 2-col ones so desktop
+          shows all six fields in two rows instead of three. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <FormField label={t("nameMk")} htmlFor="nameMk" error={state.fieldErrors?.nameMk}>
           <input
             id="nameMk"
             name="nameMk"
             defaultValue={product?.nameMk}
             required
             aria-invalid={Boolean(state.fieldErrors?.nameMk)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <FieldError message={state.fieldErrors?.nameMk} />
-        </div>
+        </FormField>
 
-        <div>
-          <label htmlFor="nameEn" className="block text-sm font-medium">
-            {t("nameEn")}
-          </label>
+        <FormField label={t("nameEn")} htmlFor="nameEn" error={state.fieldErrors?.nameEn}>
           <input
             id="nameEn"
             name="nameEn"
             defaultValue={product?.nameEn}
             required
             aria-invalid={Boolean(state.fieldErrors?.nameEn)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <FieldError message={state.fieldErrors?.nameEn} />
-        </div>
-      </div>
+        </FormField>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="sku" className="block text-sm font-medium">
-            {t("sku")}
-          </label>
+        <FormField label={t("sku")} htmlFor="sku" error={state.fieldErrors?.sku}>
           <input
             id="sku"
             name="sku"
             defaultValue={product?.sku}
             required
             aria-invalid={Boolean(state.fieldErrors?.sku)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 font-mono dark:border-zinc-700"
+            className={`${inputStyles} font-mono`}
           />
-          <FieldError message={state.fieldErrors?.sku} />
-        </div>
+        </FormField>
 
-        <div>
-          <label htmlFor="categoryId" className="block text-sm font-medium">
-            {t("category")}
-          </label>
+        <FormField label={t("category")} htmlFor="categoryId" error={state.fieldErrors?.categoryId}>
           <select
             id="categoryId"
             name="categoryId"
@@ -100,7 +105,7 @@ export function ProductForm({
             required
             disabled={categories.length === 0}
             aria-invalid={Boolean(state.fieldErrors?.categoryId)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           >
             <option value="" disabled>
               {t("selectCategory")}
@@ -111,42 +116,20 @@ export function ProductForm({
               </option>
             ))}
           </select>
-          <FieldError message={state.fieldErrors?.categoryId} />
-        </div>
-      </div>
+        </FormField>
 
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium">
-          {t("description")}
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          defaultValue={product?.description ?? ""}
-          rows={3}
-          aria-invalid={Boolean(state.fieldErrors?.description)}
-          className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
-        />
-        <FieldError message={state.fieldErrors?.description} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="barcode" className="block text-sm font-medium">
-            {t("barcode")}
-          </label>
+        <FormField label={t("barcode")} htmlFor="barcode" error={state.fieldErrors?.barcode}>
           <input
             id="barcode"
             name="barcode"
             defaultValue={product?.barcode ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.barcode)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 font-mono dark:border-zinc-700"
+            className={`${inputStyles} font-mono`}
           />
-          <FieldError message={state.fieldErrors?.barcode} />
-        </div>
+        </FormField>
 
-        <div>
-          <label htmlFor="defaultVatRate" className="block text-sm font-medium">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="defaultVatRate" className="text-sm font-medium text-foreground">
             {t("vatRate")}
           </label>
           <input
@@ -156,43 +139,56 @@ export function ProductForm({
             step="0.01"
             min={0}
             max={100}
-            defaultValue={product?.defaultVatRate?.toString() ?? ""}
+            defaultValue={product?.defaultVatRate ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.defaultVatRate)}
             aria-describedby="defaultVatRate-hint"
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <p id="defaultVatRate-hint" className="mt-1 text-xs text-zinc-500">
+          <p id="defaultVatRate-hint" className="text-xs text-muted-foreground">
             {t("vatRateHint")}
           </p>
-          <FieldError message={state.fieldErrors?.defaultVatRate} />
+          {state.fieldErrors?.defaultVatRate && (
+            <p role="alert" className="text-sm text-danger">
+              {state.fieldErrors.defaultVatRate}
+            </p>
+          )}
         </div>
       </div>
 
-      <div>
-        <label htmlFor="imageUrl" className="block text-sm font-medium">
-          {t("imageUrl")}
-        </label>
+      <FormField label={t("description")} htmlFor="description" error={state.fieldErrors?.description}>
+        <textarea
+          id="description"
+          name="description"
+          defaultValue={product?.description ?? ""}
+          rows={3}
+          aria-invalid={Boolean(state.fieldErrors?.description)}
+          className={inputStyles}
+        />
+      </FormField>
+
+      <FormField label={t("imageUrl")} htmlFor="imageUrl" error={state.fieldErrors?.imageUrl}>
         <input
           id="imageUrl"
           name="imageUrl"
           type="url"
           defaultValue={product?.imageUrl ?? ""}
           aria-invalid={Boolean(state.fieldErrors?.imageUrl)}
-          className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+          className={inputStyles}
         />
-        <FieldError message={state.fieldErrors?.imageUrl} />
-      </div>
+      </FormField>
 
       <div className="flex items-center gap-2">
         <input id="isActive" name="isActive" type="checkbox" defaultChecked={product?.isActive ?? true} className="h-4 w-4" />
-        <label htmlFor="isActive" className="text-sm font-medium">
+        <label htmlFor="isActive" className="text-sm font-medium text-foreground">
           {tCommon("active")}
         </label>
       </div>
 
       {!readOnly && (
         <div>
-          <SubmitButton pending={isPending}>{tCommon("save")}</SubmitButton>
+          <Button type="submit" disabled={isPending} aria-busy={isPending}>
+            {isPending ? "…" : tCommon("save")}
+          </Button>
         </div>
       )}
     </form>

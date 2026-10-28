@@ -3,6 +3,9 @@ import { requireSellerSession } from "@/lib/auth/require-seller";
 import { requireSellerCapability } from "@/lib/auth/permissions";
 import { Link } from "@/i18n/navigation";
 import { IMPORT_TYPES } from "@/lib/domain/import/types";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { buttonStyles } from "@/components/ui/button";
 
 export default async function SellerImportsPage() {
   const session = await requireSellerSession();
@@ -11,25 +14,21 @@ export default async function SellerImportsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <p className="mt-1 max-w-2xl text-zinc-600 dark:text-zinc-400">{t("intro")}</p>
-      </div>
+      <PageHeader title={t("title")} subtitle={t("intro")} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         {IMPORT_TYPES.map((type) => (
-          <div key={type} className="flex flex-col gap-2 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-            <span className="text-sm font-medium">{t(`types.${type}`)}</span>
-            <Link href={`/seller/imports/${type}`} className="text-sm underline underline-offset-2">
-              {t("startImport")}
-            </Link>
-            <a
-              href={`/api/seller/import/template/${type}`}
-              className="text-sm text-zinc-500 underline underline-offset-2 dark:text-zinc-500"
-            >
-              {t("downloadTemplate")}
-            </a>
-          </div>
+          <Card key={type} accentBorder className="flex flex-col gap-3 p-4">
+            <span className="text-sm font-medium text-foreground">{t(`types.${type}`)}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href={`/seller/imports/${type}`} className={buttonStyles("primary")}>
+                {t("startImport")}
+              </Link>
+              <a href={`/api/seller/import/template/${type}`} className={buttonStyles("ghost")}>
+                {t("downloadTemplate")}
+              </a>
+            </div>
+          </Card>
         ))}
       </div>
     </div>

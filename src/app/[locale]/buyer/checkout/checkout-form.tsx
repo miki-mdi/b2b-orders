@@ -6,7 +6,10 @@ import { useCart } from "@/lib/cart/use-cart";
 import { round2 } from "@/lib/domain/orders/order-totals";
 import { isPastCutOffForDelivery } from "@/lib/domain/orders/cutoff";
 import type { ResolvedCartLine } from "@/lib/domain/orders/cart-resolution";
-import { FieldError } from "@/components/forms/field-error";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { FormField, inputStyles } from "@/components/ui/form-field";
 import { initialFormState } from "@/lib/forms/form-state";
 import { resolveCartAction } from "../cart/actions";
 import { submitOrderAction } from "./actions";
@@ -59,129 +62,114 @@ export function CheckoutForm({ addresses, cutOffTime }: { addresses: AddressOpti
   const today = new Date().toISOString().slice(0, 10);
 
   if (!hydrated) {
-    return <p className="text-sm text-zinc-500">{tCommon("loading")}</p>;
+    return <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>;
   }
   if (items.length === 0) {
-    return <p className="text-sm text-zinc-500">{t("emptyCart")}</p>;
+    return <p className="text-sm text-muted-foreground">{t("emptyCart")}</p>;
   }
   if (addresses.length === 0) {
-    return <p className="text-sm text-red-600 dark:text-red-400">{t("noAddresses")}</p>;
+    return <Alert tone="danger">{t("noAddresses")}</Alert>;
   }
   if (lines === null) {
-    return <p className="text-sm text-zinc-500">{tCommon("loading")}</p>;
+    return <p className="text-sm text-muted-foreground">{tCommon("loading")}</p>;
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <form action={formAction} className="flex flex-col gap-4 lg:flex-row lg:items-start">
       <input type="hidden" name="cartJson" value={JSON.stringify(items)} />
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="text-sm font-medium">{t("deliveryAddress")}</legend>
-        {addresses.map((address) => (
-          <label
-            key={address.id}
-            className="flex items-start gap-2 rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800"
-          >
-            <input
-              type="radio"
-              name="deliveryAddressId"
-              value={address.id}
-              defaultChecked={defaultAddress?.id === address.id}
-              className="mt-1"
-              required
-            />
-            <span>
-              <span className="block font-medium">{address.label}</span>
-              <span className="block text-zinc-500">
-                {address.recipientName}, {address.addressLine1}
-                {address.addressLine2 ? `, ${address.addressLine2}` : ""}, {address.city}
+      <Card accentBorder className="flex flex-1 flex-col gap-4 p-4">
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium text-foreground">{t("deliveryAddress")}</legend>
+          {addresses.map((address) => (
+            <label
+              key={address.id}
+              className="flex items-start gap-2 rounded-control border border-border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+            >
+              <input
+                type="radio"
+                name="deliveryAddressId"
+                value={address.id}
+                defaultChecked={defaultAddress?.id === address.id}
+                className="mt-1"
+                required
+              />
+              <span>
+                <span className="block font-medium text-foreground">{address.label}</span>
+                <span className="block text-muted-foreground">
+                  {address.recipientName}, {address.addressLine1}
+                  {address.addressLine2 ? `, ${address.addressLine2}` : ""}, {address.city}
+                </span>
               </span>
-            </span>
-          </label>
-        ))}
-        <FieldError message={state.fieldErrors?.deliveryAddressId} />
-      </fieldset>
+            </label>
+          ))}
+          {state.fieldErrors?.deliveryAddressId && (
+            <p role="alert" className="text-sm text-danger">
+              {state.fieldErrors.deliveryAddressId}
+            </p>
+          )}
+        </fieldset>
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t("deliveryDate")}
-        <input
-          type="date"
-          name="requestedDeliveryDate"
-          min={today}
-          value={deliveryDate}
-          onChange={(event) => setDeliveryDate(event.target.value)}
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
-        />
-        <FieldError message={state.fieldErrors?.requestedDeliveryDate} />
-      </label>
+        <FormField label={t("deliveryDate")} htmlFor="requestedDeliveryDate" error={state.fieldErrors?.requestedDeliveryDate}>
+          <input
+            id="requestedDeliveryDate"
+            type="date"
+            name="requestedDeliveryDate"
+            min={today}
+            value={deliveryDate}
+            onChange={(event) => setDeliveryDate(event.target.value)}
+            className={inputStyles}
+          />
+        </FormField>
 
-      {showCutOffWarning && (
-        <p
-          role="alert"
-          className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
-        >
-          {t("cutOffWarning", { time: cutOffTime ?? "" })}
-        </p>
-      )}
+        {showCutOffWarning && <Alert tone="warning">{t("cutOffWarning", { time: cutOffTime ?? "" })}</Alert>}
 
-      <label className="flex flex-col gap-1 text-sm">
-        {t("note")}
-        <textarea
-          name="note"
-          rows={3}
-          placeholder={t("notePlaceholder")}
-          className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
-        />
-      </label>
+        <FormField label={t("note")} htmlFor="note">
+          <textarea id="note" name="note" rows={3} placeholder={t("notePlaceholder")} className={inputStyles} />
+        </FormField>
+      </Card>
 
-      <div className="rounded border border-zinc-200 p-4 text-sm dark:border-zinc-800">
-        <h2 className="mb-2 font-semibold">{t("summary")}</h2>
-        <ul className="mb-3 flex flex-col gap-1">
+      <Card accentBorder className="flex w-full flex-col gap-3 p-4 lg:w-80 lg:shrink-0">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{t("summary")}</h2>
+        <ul className="flex flex-col gap-1.5 text-sm">
           {lines.map((line) =>
             line.ok ? (
               <li key={line.productUnitId} className="flex justify-between gap-4">
-                <span>
+                <span className="text-muted-foreground">
                   {locale === "mk" ? line.productNameMk : line.productNameEn} × {line.requestedQty}
                 </span>
-                <span>
+                <span className="text-foreground">
                   {line.lineTotal.toFixed(2)} {line.currency}
                 </span>
               </li>
             ) : (
-              <li key={line.productUnitId} className="text-red-600 dark:text-red-400">
+              <li key={line.productUnitId} className="text-xs text-danger">
                 {line.productUnitId}
               </li>
             )
           )}
         </ul>
-        <div className="flex justify-between">
-          <span>{t("subtotal")}</span>
-          <span>{subtotal.toFixed(2)}</span>
+        <div className="flex flex-col gap-1.5 border-t border-border pt-3 text-sm">
+          <div className="flex justify-between text-muted-foreground">
+            <span>{t("subtotal")}</span>
+            <span>{subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>{t("vat")}</span>
+            <span>{vat.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between border-t border-border pt-1.5 text-base font-semibold text-foreground">
+            <span>{t("total")}</span>
+            <span>{total.toFixed(2)}</span>
+          </div>
         </div>
-        <div className="flex justify-between">
-          <span>{t("vat")}</span>
-          <span>{vat.toFixed(2)}</span>
-        </div>
-        <div className="flex justify-between font-semibold">
-          <span>{t("total")}</span>
-          <span>{total.toFixed(2)}</span>
-        </div>
-      </div>
 
-      {state.status === "error" && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {state.message}
-        </p>
-      )}
+        {state.status === "error" && <Alert tone="danger">{state.message}</Alert>}
 
-      <button
-        type="submit"
-        disabled={pending || hasIssues}
-        aria-busy={pending}
-        className="rounded bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-white dark:text-black"
-      >
-        {pending ? "…" : t("submit")}
-      </button>
+        <Button type="submit" disabled={pending || hasIssues} aria-busy={pending} className="w-full">
+          {pending ? "…" : t("submit")}
+        </Button>
+      </Card>
     </form>
   );
 }

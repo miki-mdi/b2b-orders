@@ -2,6 +2,7 @@
 // database, no Railway, no network at all.
 import { describe, expect, it, vi } from "vitest";
 import {
+  assertConnectedToDatabase,
   assertConnectedToPilotDatabase,
   getCurrentDatabaseName,
   WrongTargetDatabaseError,
@@ -21,6 +22,30 @@ describe("getCurrentDatabaseName", () => {
 
   it("throws if the query returns no rows", async () => {
     await expect(getCurrentDatabaseName(makeDb(undefined))).rejects.toThrow(WrongTargetDatabaseError);
+  });
+});
+
+describe("assertConnectedToDatabase (generic, parameterized)", () => {
+  it("passes silently when the connected name matches expectedName", async () => {
+    await expect(assertConnectedToDatabase(makeDb("b2b_orders_dev"), "b2b_orders_dev")).resolves.toBeUndefined();
+  });
+
+  it("refuses when connected to Railway's \"railway\" instead of the expected local dev database", async () => {
+    await expect(assertConnectedToDatabase(makeDb("railway"), "b2b_orders_dev")).rejects.toThrow(
+      WrongTargetDatabaseError
+    );
+  });
+
+  it("refuses for any other database name, not just a known one", async () => {
+    await expect(assertConnectedToDatabase(makeDb("some_other_database"), "b2b_orders_dev")).rejects.toThrow(
+      WrongTargetDatabaseError
+    );
+  });
+
+  it("is case-sensitive", async () => {
+    await expect(assertConnectedToDatabase(makeDb("B2B_Orders_Dev"), "b2b_orders_dev")).rejects.toThrow(
+      WrongTargetDatabaseError
+    );
   });
 });
 

@@ -7,6 +7,9 @@ import { Link } from "@/i18n/navigation";
 import { StatusBadge } from "@/components/seller/status-badge";
 import { ToggleActiveForm } from "@/components/seller/toggle-active-form";
 import { Pagination } from "@/components/seller/pagination";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { buttonStyles } from "@/components/ui/button";
 import { toggleCustomerActiveAction } from "./actions";
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
@@ -24,56 +27,58 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        {canCreate && (
-          <Link
-            href="/seller/customers/new"
-            className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-          >
-            {tCommon("addNew")}
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title={t("title")}
+        action={
+          canCreate ? (
+            <Link href="/seller/customers/new" className={buttonStyles("primary")}>
+              {tCommon("addNew")}
+            </Link>
+          ) : undefined
+        }
+      />
 
       {customers.length === 0 ? (
-        <p className="rounded border border-dashed border-zinc-300 p-8 text-center text-zinc-500 dark:border-zinc-700">
+        <p className="rounded-control border border-dashed border-border p-8 text-center text-muted-foreground">
           {t("empty")}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
+        <Card accentBorder className="overflow-x-auto p-0">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 dark:bg-zinc-900">
+            <thead className="bg-muted">
               <tr>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnName")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnCode")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnContact")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {tCommon("status")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {tCommon("actions")}
                 </th>
               </tr>
             </thead>
             <tbody>
               {customers.map((customer) => (
-                <tr key={customer.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                  <td className="px-4 py-2">{customer.name}</td>
-                  <td className="px-4 py-2 font-mono">{customer.code ?? "—"}</td>
-                  <td className="px-4 py-2">{customer.contactEmail ?? customer.contactPhone ?? "—"}</td>
+                <tr key={customer.id} className="border-t border-border">
+                  <td className="px-4 py-2 text-foreground">{customer.name}</td>
+                  <td className="px-4 py-2 font-mono text-foreground">{customer.code ?? "—"}</td>
+                  <td className="px-4 py-2 text-foreground">{customer.contactEmail ?? customer.contactPhone ?? "—"}</td>
                   <td className="px-4 py-2">
                     <StatusBadge isActive={customer.isActive} activeLabel={tCommon("active")} inactiveLabel={tCommon("inactive")} />
                   </td>
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
-                      <Link href={`/seller/customers/${customer.id}/edit`} className="text-sm underline underline-offset-2">
+                      <Link
+                        href={`/seller/customers/${customer.id}/edit`}
+                        className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+                      >
                         {canEdit ? tCommon("edit") : tCommon("view")}
                       </Link>
                       {canActivate && (
@@ -82,6 +87,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                           isActive={customer.isActive}
                           deactivateLabel={tCommon("deactivate")}
                           reactivateLabel={tCommon("reactivate")}
+                          tone="danger"
                         />
                       )}
                     </div>
@@ -90,7 +96,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       <Pagination

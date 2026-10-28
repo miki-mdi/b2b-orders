@@ -3,6 +3,9 @@ import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
 import { requireSellerCapability } from "@/lib/auth/permissions";
 import { listCategories } from "@/lib/domain/catalog/category-service";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { buttonStyles } from "@/components/ui/button";
 import { ProductForm } from "../product-form";
 import { createProductAction } from "../actions";
 
@@ -15,13 +18,15 @@ export default async function NewProductPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/seller/products" className="text-sm underline underline-offset-2">
+      <div className="flex flex-col items-start gap-2">
+        <Link href="/seller/products" className={buttonStyles("ghost")}>
           {tCommon("backToList")}
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{t("newTitle")}</h1>
+        <PageHeader title={t("newTitle")} />
       </div>
-      <ProductForm action={createProductAction} categories={categories} />
+      <Card accentBorder className="max-w-xl p-6 lg:max-w-4xl">
+        <ProductForm action={createProductAction} categories={categories} />
+      </Card>
     </div>
   );
 }

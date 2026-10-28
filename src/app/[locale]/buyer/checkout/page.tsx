@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import { requireBuyerSession } from "@/lib/auth/require-buyer";
 import { listActiveCustomerAddresses } from "@/lib/domain/customers/customer-address-service";
 import { getTenantCutOffInfo } from "@/lib/domain/orders/order-service";
+import { PageHeader } from "@/components/ui/page-header";
 import { CheckoutForm } from "./checkout-form";
 
 export default async function BuyerCheckoutPage() {
@@ -14,8 +15,8 @@ export default async function BuyerCheckoutPage() {
   ]);
 
   return (
-    <div className="flex max-w-2xl flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+    <div className="flex flex-col gap-4">
+      <PageHeader title={t("title")} />
       <CheckoutForm
         addresses={addresses.map((address) => ({
           id: address.id,

@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
-import { FieldError } from "@/components/forms/field-error";
-import { SubmitButton } from "@/components/forms/submit-button";
+import { FormField, inputStyles } from "@/components/ui/form-field";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { initialFormState, type FormState } from "@/lib/forms/form-state";
 import type { PriceList } from "@prisma/client";
 
@@ -31,36 +32,24 @@ export function PricingSection({
     return (
       <div className="flex flex-col gap-4 text-sm">
         <div>
-          <span className="block font-medium text-zinc-500">{t("assignedPriceList")}</span>
-          <p>{assignedPriceList?.name ?? t("noAssignment")}</p>
+          <span className="block font-medium text-muted-foreground">{t("assignedPriceList")}</span>
+          <p className="text-foreground">{assignedPriceList?.name ?? t("noAssignment")}</p>
         </div>
         <div>
-          <span className="block font-medium text-zinc-500">{t("discount")}</span>
-          <p>{currentDiscountPercent !== null ? `${currentDiscountPercent}%` : "—"}</p>
+          <span className="block font-medium text-muted-foreground">{t("discount")}</span>
+          <p className="text-foreground">{currentDiscountPercent !== null ? `${currentDiscountPercent}%` : "—"}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {!currentPriceListId && (
-        <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          {t("noAssignment")}
-        </p>
-      )}
+    <div className="flex flex-col gap-4">
+      {!currentPriceListId && <Alert tone="warning">{t("noAssignment")}</Alert>}
 
       <form action={assignFormAction} className="flex flex-wrap items-end gap-3">
-        <div>
-          <label htmlFor="priceListId" className="block text-sm font-medium">
-            {t("assignedPriceList")}
-          </label>
-          <select
-            id="priceListId"
-            name="priceListId"
-            defaultValue={currentPriceListId ?? ""}
-            className="mt-1 w-64 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
-          >
+        <FormField label={t("assignedPriceList")} htmlFor="priceListId">
+          <select id="priceListId" name="priceListId" defaultValue={currentPriceListId ?? ""} className={`${inputStyles} sm:w-64`}>
             <option value="">{t("selectPriceList")}</option>
             {priceLists.map((priceList) => (
               <option key={priceList.id} value={priceList.id}>
@@ -68,18 +57,20 @@ export function PricingSection({
               </option>
             ))}
           </select>
-        </div>
-        <SubmitButton pending={assignPending}>{t("save")}</SubmitButton>
+        </FormField>
+        <Button type="submit" disabled={assignPending} aria-busy={assignPending}>
+          {assignPending ? "…" : t("save")}
+        </Button>
         {assignState.status === "error" && (
-          <span role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <span role="alert" className="text-sm text-danger">
             {assignState.message}
           </span>
         )}
       </form>
 
       <form action={discountFormAction} className="flex flex-wrap items-end gap-3">
-        <div>
-          <label htmlFor="discountPercent" className="block text-sm font-medium">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="discountPercent" className="text-sm font-medium text-foreground">
             {t("discount")}
           </label>
           <input
@@ -92,14 +83,20 @@ export function PricingSection({
             defaultValue={currentDiscountPercent ?? ""}
             aria-describedby="discountPercent-hint"
             aria-invalid={Boolean(discountState.fieldErrors?.discountPercent)}
-            className="mt-1 w-32 rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={`${inputStyles} sm:w-40`}
           />
-          <p id="discountPercent-hint" className="mt-1 text-xs text-zinc-500">
+          <p id="discountPercent-hint" className="text-xs text-muted-foreground">
             {t("discountHint")}
           </p>
-          <FieldError message={discountState.fieldErrors?.discountPercent} />
+          {discountState.fieldErrors?.discountPercent && (
+            <p role="alert" className="text-sm text-danger">
+              {discountState.fieldErrors.discountPercent}
+            </p>
+          )}
         </div>
-        <SubmitButton pending={discountPending}>{t("save")}</SubmitButton>
+        <Button type="submit" disabled={discountPending} aria-busy={discountPending}>
+          {discountPending ? "…" : t("save")}
+        </Button>
       </form>
     </div>
   );

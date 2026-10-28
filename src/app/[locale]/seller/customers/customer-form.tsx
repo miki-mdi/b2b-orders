@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
-import { FieldError } from "@/components/forms/field-error";
-import { SubmitButton } from "@/components/forms/submit-button";
+import { FormField, inputStyles } from "@/components/ui/form-field";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { initialFormState, type FormState } from "@/lib/forms/form-state";
 import type { Customer } from "@prisma/client";
 
@@ -21,113 +22,78 @@ export function CustomerForm({
   const tCommon = useTranslations("seller.common");
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4" noValidate inert={readOnly || undefined}>
+    <form action={formAction} className="flex flex-col gap-4" noValidate inert={readOnly || undefined}>
       {readOnly && (
-        <p className="rounded border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+        <p className="rounded-control border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
           {tCommon("readOnlyNotice")}
         </p>
       )}
-      {state.status === "error" && state.message && !state.fieldErrors && (
-        <p role="alert" className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-          {state.message}
-        </p>
-      )}
+      {state.status === "error" && state.message && !state.fieldErrors && <Alert tone="danger">{state.message}</Alert>}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium">
-            {t("name")}
-          </label>
-          <input
-            id="name"
-            name="name"
-            defaultValue={customer?.name}
-            required
-            aria-invalid={Boolean(state.fieldErrors?.name)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
-          />
-          <FieldError message={state.fieldErrors?.name} />
+      {/* Identity/contact/financial fields stay in original DOM order - only
+          their grid placement changes. At the xl (wide desktop) breakpoint
+          this becomes a 4-col grid: name spans 2 cols so it closes row 1
+          with code+taxId (4 cols total), then the remaining 4 fields
+          (contactEmail/contactPhone/creditLimit/paymentTermsDays) exactly
+          fill row 2 - no field is ever left alone on its own row. Below xl,
+          a plain 2-col grid (sm:grid-cols-2) covers tablet and the base
+          grid-cols-1 covers mobile, both unchanged from before. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="xl:col-span-2">
+          <FormField label={t("name")} htmlFor="name" error={state.fieldErrors?.name}>
+            <input
+              id="name"
+              name="name"
+              defaultValue={customer?.name}
+              required
+              aria-invalid={Boolean(state.fieldErrors?.name)}
+              className={inputStyles}
+            />
+          </FormField>
         </div>
 
-        <div>
-          <label htmlFor="code" className="block text-sm font-medium">
-            {t("code")}
-          </label>
+        <FormField label={t("code")} htmlFor="code" error={state.fieldErrors?.code}>
           <input
             id="code"
             name="code"
             defaultValue={customer?.code ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.code)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 font-mono dark:border-zinc-700"
+            className={`${inputStyles} font-mono`}
           />
-          <FieldError message={state.fieldErrors?.code} />
-        </div>
-      </div>
+        </FormField>
 
-      <div>
-        <label htmlFor="taxId" className="block text-sm font-medium">
-          {t("taxId")}
-        </label>
-        <input
-          id="taxId"
-          name="taxId"
-          defaultValue={customer?.taxId ?? ""}
-          aria-invalid={Boolean(state.fieldErrors?.taxId)}
-          className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
-        />
-        <FieldError message={state.fieldErrors?.taxId} />
-      </div>
+        <FormField label={t("taxId")} htmlFor="taxId" error={state.fieldErrors?.taxId}>
+          <input
+            id="taxId"
+            name="taxId"
+            defaultValue={customer?.taxId ?? ""}
+            aria-invalid={Boolean(state.fieldErrors?.taxId)}
+            className={inputStyles}
+          />
+        </FormField>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="contactEmail" className="block text-sm font-medium">
-            {t("contactEmail")}
-          </label>
+        <FormField label={t("contactEmail")} htmlFor="contactEmail" error={state.fieldErrors?.contactEmail}>
           <input
             id="contactEmail"
             name="contactEmail"
             type="email"
             defaultValue={customer?.contactEmail ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.contactEmail)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <FieldError message={state.fieldErrors?.contactEmail} />
-        </div>
-        <div>
-          <label htmlFor="contactPhone" className="block text-sm font-medium">
-            {t("contactPhone")}
-          </label>
+        </FormField>
+
+        <FormField label={t("contactPhone")} htmlFor="contactPhone" error={state.fieldErrors?.contactPhone}>
           <input
             id="contactPhone"
             name="contactPhone"
             defaultValue={customer?.contactPhone ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.contactPhone)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <FieldError message={state.fieldErrors?.contactPhone} />
-        </div>
-      </div>
+        </FormField>
 
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium">
-          {t("notes")}
-        </label>
-        <textarea
-          id="notes"
-          name="notes"
-          defaultValue={customer?.notes ?? ""}
-          rows={3}
-          aria-invalid={Boolean(state.fieldErrors?.notes)}
-          className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
-        />
-        <FieldError message={state.fieldErrors?.notes} />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="creditLimit" className="block text-sm font-medium">
-            {t("creditLimit")}
-          </label>
+        <FormField label={t("creditLimit")} htmlFor="creditLimit" error={state.fieldErrors?.creditLimit}>
           <input
             id="creditLimit"
             name="creditLimit"
@@ -136,14 +102,11 @@ export function CustomerForm({
             min={0}
             defaultValue={customer?.creditLimit?.toString() ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.creditLimit)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <FieldError message={state.fieldErrors?.creditLimit} />
-        </div>
-        <div>
-          <label htmlFor="paymentTermsDays" className="block text-sm font-medium">
-            {t("paymentTermsDays")}
-          </label>
+        </FormField>
+
+        <FormField label={t("paymentTermsDays")} htmlFor="paymentTermsDays" error={state.fieldErrors?.paymentTermsDays}>
           <input
             id="paymentTermsDays"
             name="paymentTermsDays"
@@ -151,22 +114,34 @@ export function CustomerForm({
             min={0}
             defaultValue={customer?.paymentTermsDays ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.paymentTermsDays)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <FieldError message={state.fieldErrors?.paymentTermsDays} />
-        </div>
+        </FormField>
       </div>
+
+      <FormField label={t("notes")} htmlFor="notes" error={state.fieldErrors?.notes}>
+        <textarea
+          id="notes"
+          name="notes"
+          defaultValue={customer?.notes ?? ""}
+          rows={3}
+          aria-invalid={Boolean(state.fieldErrors?.notes)}
+          className={inputStyles}
+        />
+      </FormField>
 
       <div className="flex items-center gap-2">
         <input id="isActive" name="isActive" type="checkbox" defaultChecked={customer?.isActive ?? true} className="h-4 w-4" />
-        <label htmlFor="isActive" className="text-sm font-medium">
+        <label htmlFor="isActive" className="text-sm font-medium text-foreground">
           {tCommon("active")}
         </label>
       </div>
 
       {!readOnly && (
         <div>
-          <SubmitButton pending={isPending}>{tCommon("save")}</SubmitButton>
+          <Button type="submit" disabled={isPending} aria-busy={isPending}>
+            {isPending ? "…" : tCommon("save")}
+          </Button>
         </div>
       )}
     </form>

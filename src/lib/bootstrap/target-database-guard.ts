@@ -32,6 +32,22 @@ export async function getCurrentDatabaseName(db: DatabaseNameClient): Promise<st
   return name;
 }
 
+/**
+ * Generic form, reused by any operator script that must only ever run
+ * against one specific, named database (e.g.
+ * prisma/reset-local-seller-password.ts requiring "b2b_orders_dev" - the
+ * exact opposite direction from the pilot guard below, same mechanism).
+ */
+export async function assertConnectedToDatabase(db: DatabaseNameClient, expectedName: string): Promise<void> {
+  const name = await getCurrentDatabaseName(db);
+  if (name !== expectedName) {
+    throw new WrongTargetDatabaseError(
+      `Refusing to run: the connected database is "${name}", but this script only ever targets "${expectedName}". ` +
+        "Fix the environment and re-run. No write was attempted."
+    );
+  }
+}
+
 export async function assertConnectedToPilotDatabase(db: DatabaseNameClient): Promise<void> {
   const name = await getCurrentDatabaseName(db);
   if (name !== REQUIRED_PILOT_DATABASE_NAME) {

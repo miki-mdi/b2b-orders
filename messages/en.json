@@ -1,21 +1,44 @@
 {
   "home": {
     "title": "B2B Orders",
-    "tagline": "Multi-tenant B2B ordering platform - Phase 0 foundation.",
-    "signedInAs": "Signed in as {name}",
-    "notSignedIn": "Not signed in.",
-    "activeMembership": "Active membership: {description}",
-    "noMembership": "No active membership on this account.",
-    "signIn": "Sign in",
-    "signOut": "Sign out",
-    "sellerAdmin": "Seller admin",
-    "buyerPortal": "Buyer portal",
-    "diagnostics": "Diagnostics"
+    "entryHeadline": "B2B ordering, simplified.",
+    "entrySubtitle": "Choose how you'd like to continue.",
+    "buyerTitle": "Buyer",
+    "buyerDescription": "Place and track your orders",
+    "sellerTitle": "Seller",
+    "sellerDescription": "Manage your catalog, customers, and orders",
+    "noAccess": "Your account isn't connected to an active seller or buyer workspace yet. Contact your administrator for access.",
+    "connectionsLink": "View my collaborations",
+    "signOut": "Sign out"
   },
-  "membership": {
-    "platformAdmin": "Platform Admin",
-    "tenant": "Seller staff at tenant {tenantId} ({role})",
-    "customer": "Buyer at customer {customerId} ({role})"
+  "connections": {
+    "title": "My collaborations",
+    "intro": "Invitations from sellers you can accept or decline, across every seller that has invited you.",
+    "empty": "You have no pending invitations right now.",
+    "accept": "Accept",
+    "decline": "Decline",
+    "accepted": "Invitation accepted. You can now access this seller.",
+    "declined": "Invitation declined.",
+    "genericError": "Something went wrong. Please try again.",
+    "asCustomer": "As {name}",
+    "backToSite": "Back to site",
+    "findSellersTitle": "Find sellers",
+    "findSellersIntro": "Search for an active seller company and request a trading relationship. They'll need to accept before you can browse their catalog or place orders.",
+    "searchPlaceholder": "Search by seller name",
+    "search": "Search",
+    "noSellersFound": "No sellers match your search.",
+    "directoryStatusActive": "Already connected",
+    "directoryStatusPending": "Request pending",
+    "requestAction": "Request collaboration",
+    "requestSent": "Request sent.",
+    "requestAlreadyPending": "A request is already pending for this seller.",
+    "activeCollaborationsTitle": "Active collaborations",
+    "activeCollaborationsIntro": "Sellers you're currently connected with. Ending a collaboration removes your access to that seller's catalog, prices, cart, checkout, and orders.",
+    "endCollaboration": "End collaboration",
+    "revokeConfirmNotice": "This will immediately remove your access to this seller. This cannot be undone from here - you'd need to request a new collaboration.",
+    "revokeConfirm": "Yes, end collaboration",
+    "revokeCancel": "Cancel",
+    "revoked": "Collaboration ended."
   },
   "signIn": {
     "title": "Sign in",
@@ -31,6 +54,11 @@
     "switchTo": "Switch to {locale}",
     "switcherLabel": "Language"
   },
+  "theme": {
+    "groupLabel": "Theme",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "common": {
     "errorTitle": "Something went wrong",
     "errorMessage": "An unexpected error occurred. You can try again, or go back and retry the action.",
@@ -39,6 +67,7 @@
   "seller": {
     "nav": {
       "title": "Seller Admin",
+      "moduleBadge": "Seller",
       "dashboard": "Dashboard",
       "categories": "Categories",
       "units": "Units of Measure",
@@ -46,14 +75,18 @@
       "customers": "Customers",
       "priceLists": "Price Lists",
       "orders": "Orders",
+      "buyerRequests": "Buyer requests",
       "audit": "Audit Log",
       "imports": "Imports",
       "exports": "Exports",
-      "backToSite": "Back to site"
+      "backToSite": "Back to site",
+      "more": "More",
+      "menu": "Menu"
     },
     "dashboard": {
       "title": "Dashboard",
-      "intro": "Manage the categories, units of measure and products your customers will see.",
+      "intro": "A quick overview of today's orders and fast access to your daily tasks.",
+      "ordersCard": "Orders",
       "categoriesCard": "Categories",
       "unitsCard": "Units of Measure",
       "productsCard": "Products",
@@ -71,7 +104,11 @@
       "activeProducts": "Active product units",
       "recentActivityTitle": "Recent orders",
       "recentActivityEmpty": "No orders yet.",
-      "quickLinksTitle": "Manage",
+      "quickLinksTitle": "Quick actions",
+      "tabsLabel": "Dashboard sections",
+      "tabOverview": "Overview",
+      "tabAnalytics": "Analytics",
+      "tabRecentOrders": "Recent orders",
       "analyticsTitle": "Submitted order value",
       "rangeToday": "Today",
       "rangeWeek": "This week",
@@ -235,6 +272,45 @@
       "unhideAction": "Un-hide",
       "hiddenBadge": "Hidden",
       "visibleBadge": "Visible (default)"
+    },
+    "buyerAccess": {
+      "title": "Buyer access",
+      "intro": "Invite a registered buyer account to access this customer's catalog and place orders. They won't see any catalog, prices, or orders until they accept.",
+      "emailLabel": "Buyer email",
+      "sendButton": "Send invitation",
+      "successCreated": "Invitation sent.",
+      "successAlreadyPending": "An invitation is already pending for this email.",
+      "successReinvited": "Invitation re-sent.",
+      "genericError": "Something went wrong sending the invitation.",
+      "empty": "No invitations sent yet.",
+      "columnBuyer": "Buyer",
+      "columnStatus": "Status",
+      "columnSent": "Sent",
+      "statusPending": "Pending",
+      "statusActive": "Active",
+      "statusDeclined": "Declined",
+      "statusRevoked": "Revoked",
+      "revokeAccess": "Revoke access",
+      "revokeConfirmNotice": "This will immediately remove this buyer's access to your catalog, prices, and orders.",
+      "revokeConfirm": "Yes, revoke",
+      "revokeCancel": "Cancel",
+      "revoked": "Access revoked."
+    },
+    "buyerRequests": {
+      "title": "Buyer requests",
+      "intro": "Buyers who have asked to connect with your company. Select which of your existing customers each request belongs to, then accept or decline.",
+      "createCustomerNote": "Don't see the right customer in the list?",
+      "createCustomerLink": "Create a new customer first",
+      "empty": "No pending buyer requests right now.",
+      "statusPending": "Pending",
+      "customerLabel": "Customer",
+      "customerPlaceholder": "Select a customer",
+      "accept": "Accept",
+      "decline": "Decline",
+      "accepted": "Request accepted. This buyer now has access.",
+      "declined": "Request declined.",
+      "selectCustomerRequired": "Select a customer before accepting.",
+      "genericError": "Something went wrong. Please try again."
     },
     "priceLists": {
       "title": "Price Lists",
@@ -447,10 +523,22 @@
   "buyer": {
     "nav": {
       "title": "Buyer Portal",
+      "moduleBadge": "Buyer",
       "catalog": "Catalog",
       "cart": "Cart",
       "orders": "Orders",
-      "backToSite": "Back to site"
+      "sellers": "Sellers",
+      "connections": "My collaborations",
+      "backToSite": "Back to site",
+      "menu": "Menu"
+    },
+    "sellers": {
+      "title": "Sellers",
+      "intro": "Switch which seller you're currently browsing and ordering from, on this device.",
+      "onlyOneSeller": "You currently collaborate with only one seller. Once you're active with more than one, you'll be able to switch between them here.",
+      "asCustomer": "As {name}",
+      "current": "Current",
+      "select": "Select"
     },
     "common": {
       "loading": "Loading…",
@@ -564,8 +652,44 @@
   "admin": {
     "nav": {
       "title": "Platform Admin",
+      "tenants": "Tenants",
+      "users": "Users",
       "diagnostics": "Diagnostics",
       "backToSite": "Back to site"
+    },
+    "tenants": {
+      "title": "Tenants",
+      "empty": "No tenants yet.",
+      "statTotal": "Total tenants",
+      "statActive": "Active",
+      "statSuspended": "Suspended",
+      "columnName": "Company",
+      "columnSlug": "Slug",
+      "columnVat": "Default VAT",
+      "columnStatus": "Status",
+      "columnMembers": "Members",
+      "columnCustomers": "Customers",
+      "columnOrders": "Orders",
+      "status": {
+        "ACTIVE": "Active",
+        "SUSPENDED": "Suspended"
+      }
+    },
+    "users": {
+      "title": "Users",
+      "empty": "No users yet.",
+      "statTotal": "Total users",
+      "statActive": "Active",
+      "statPlatformAdmins": "Platform admins",
+      "columnUser": "User",
+      "columnStatus": "Status",
+      "columnPlatformAdmin": "Platform admin",
+      "columnMemberships": "Memberships",
+      "statusActive": "Active",
+      "statusInactive": "Inactive",
+      "noMemberships": "No memberships",
+      "yes": "Yes",
+      "no": "No"
     },
     "diagnostics": {
       "title": "Diagnostics",

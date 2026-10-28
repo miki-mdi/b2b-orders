@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { requireBuyerSession } from "@/lib/auth/require-buyer";
+import { PageHeader } from "@/components/ui/page-header";
 import { CartView } from "./cart-view";
 
 export default async function BuyerCartPage() {
@@ -10,7 +11,7 @@ export default async function BuyerCartPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <PageHeader title={t("title")} />
       <CartView />
     </div>
   );

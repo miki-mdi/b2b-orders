@@ -18,6 +18,10 @@
     "db:studio": "prisma studio",
     "db:bootstrap-pilot": "tsx prisma/bootstrap-pilot.ts",
     "db:create-pilot-buyer": "tsx prisma/create-pilot-buyer.ts",
+    "db:reset-local-seller-password": "tsx prisma/reset-local-seller-password.ts",
+    "db:create-local-demo-accounts": "tsx prisma/create-local-demo-accounts.ts",
+    "db:seed-local-demo-relationships": "tsx prisma/seed-local-demo-relationships.ts",
+    "db:restore-local-demo": "tsx prisma/restore-local-demo.ts",
     "rls:verify": "tsx scripts/verify-rls.ts",
     "rls:snapshot": "tsx scripts/snapshot-rls.ts"
   },

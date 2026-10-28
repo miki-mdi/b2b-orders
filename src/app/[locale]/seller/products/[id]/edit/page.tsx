@@ -7,6 +7,9 @@ import { getProduct } from "@/lib/domain/catalog/product-service";
 import { listCategories } from "@/lib/domain/catalog/category-service";
 import { StatusBadge } from "@/components/seller/status-badge";
 import { ToggleActiveForm } from "@/components/seller/toggle-active-form";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { buttonStyles } from "@/components/ui/button";
 import { ProductForm } from "../../product-form";
 import { updateProductAction } from "../../actions";
 import { toggleProductUnitActiveAction } from "../units/actions";
@@ -25,81 +28,98 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     notFound();
   }
   const categories = await listCategories(session.tenantId);
+  // ProductForm is a Client Component - pass only its own editable fields,
+  // never the full getProduct() result (its `units` relation carries Prisma
+  // Decimal values, which aren't a plain object RSC can send across the
+  // server/client boundary).
+  const productFormValues = {
+    nameMk: product.nameMk,
+    nameEn: product.nameEn,
+    sku: product.sku,
+    categoryId: product.categoryId,
+    barcode: product.barcode,
+    defaultVatRate: product.defaultVatRate?.toString() ?? null,
+    description: product.description,
+    imageUrl: product.imageUrl,
+    isActive: product.isActive,
+  };
 
   return (
-    <div className="flex max-w-3xl flex-col gap-10">
+    <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-4">
-        <div>
-          <Link href="/seller/products" className="text-sm underline underline-offset-2">
+        <div className="flex flex-col items-start gap-2">
+          <Link href="/seller/products" className={buttonStyles("ghost")}>
             {tCommon("backToList")}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold">{canWrite ? t("editTitle") : t("viewTitle")}</h1>
+          <PageHeader title={canWrite ? t("editTitle") : t("viewTitle")} />
         </div>
-        <ProductForm action={updateProductAction.bind(null, id)} product={product} categories={categories} readOnly={!canWrite} />
+        <Card accentBorder className="max-w-xl p-6 lg:max-w-4xl">
+          <ProductForm action={updateProductAction.bind(null, id)} product={productFormValues} categories={categories} readOnly={!canWrite} />
+        </Card>
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold">{tUnits("title")}</h2>
+          <h2 className="text-xl font-semibold text-foreground">{tUnits("title")}</h2>
           {canWrite && (
-            <Link
-              href={`/seller/products/${id}/units/new`}
-              className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-            >
+            <Link href={`/seller/products/${id}/units/new`} className={buttonStyles("primary")}>
               {tCommon("addNew")}
             </Link>
           )}
         </div>
 
         {product.units.length === 0 ? (
-          <p className="rounded border border-dashed border-zinc-300 p-8 text-center text-zinc-500 dark:border-zinc-700">
+          <p className="rounded-control border border-dashed border-border p-8 text-center text-muted-foreground">
             {tUnits("empty")}
           </p>
         ) : (
-          <div className="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
+          <Card accentBorder className="overflow-x-auto p-0">
             <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 dark:bg-zinc-900">
+              <thead className="bg-muted">
                 <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tUnits("columnLabel")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tUnits("columnSku")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tUnits("columnUnit")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tUnits("columnMinQty")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tUnits("columnIncrement")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tCommon("status")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tCommon("actions")}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {product.units.map((unit) => (
-                  <tr key={unit.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                    <td className="px-4 py-2">
+                  <tr key={unit.id} className="border-t border-border">
+                    <td className="px-4 py-2 text-foreground">
                       {unit.label}
-                      {unit.isDefault && <span className="ml-2 text-xs text-zinc-500">★</span>}
+                      {unit.isDefault && <span className="ml-2 text-xs text-muted-foreground">★</span>}
                     </td>
-                    <td className="px-4 py-2 font-mono">{unit.sku}</td>
-                    <td className="px-4 py-2">{unit.unitOfMeasure.labelEn}</td>
-                    <td className="px-4 py-2">{unit.minOrderQty.toString()}</td>
-                    <td className="px-4 py-2">{unit.orderIncrement.toString()}</td>
+                    <td className="px-4 py-2 font-mono text-foreground">{unit.sku}</td>
+                    <td className="px-4 py-2 text-foreground">{unit.unitOfMeasure.labelEn}</td>
+                    <td className="px-4 py-2 text-foreground">{unit.minOrderQty.toString()}</td>
+                    <td className="px-4 py-2 text-foreground">{unit.orderIncrement.toString()}</td>
                     <td className="px-4 py-2">
                       <StatusBadge isActive={unit.isActive} activeLabel={tCommon("active")} inactiveLabel={tCommon("inactive")} />
                     </td>
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-3">
-                        <Link href={`/seller/products/${id}/units/${unit.id}/edit`} className="text-sm underline underline-offset-2">
+                        <Link
+                          href={`/seller/products/${id}/units/${unit.id}/edit`}
+                          className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+                        >
                           {canWrite ? tCommon("edit") : tCommon("view")}
                         </Link>
                         {canWrite && (
@@ -108,6 +128,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
                             isActive={unit.isActive}
                             deactivateLabel={tCommon("deactivate")}
                             reactivateLabel={tCommon("reactivate")}
+                            tone="danger"
                           />
                         )}
                       </div>
@@ -116,7 +137,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
                 ))}
               </tbody>
             </table>
-          </div>
+          </Card>
         )}
       </div>
     </div>

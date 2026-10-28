@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import { FormField, inputStyles } from "@/components/ui/form-field";
 import { AppLogo } from "@/components/brand/app-logo";
-import { CompactLocaleSwitcher } from "@/components/compact-locale-switcher";
+import { LanguageThemeControls } from "@/components/language-theme-controls";
 
 export default async function SignInPage({
   searchParams,
@@ -17,12 +17,12 @@ export default async function SignInPage({
   const { error } = await searchParams;
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-muted p-4 sm:p-8">
-      <div className="flex w-full max-w-sm flex-col items-center gap-6">
-        <div className="flex w-full justify-end">
-          <CompactLocaleSwitcher />
-        </div>
+    <div className="relative flex flex-1 items-center justify-center bg-muted p-4 sm:p-8">
+      <div className="absolute right-4 top-4 sm:right-8 sm:top-8">
+        <LanguageThemeControls />
+      </div>
 
+      <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <AppLogo />
 
         <Card className="w-full p-6 sm:p-8">

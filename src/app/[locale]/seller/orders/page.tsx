@@ -9,6 +9,10 @@ import { clampPage } from "@/lib/pagination";
 import { Link } from "@/i18n/navigation";
 import { OrderStatusBadge } from "@/components/seller/order-status-badge";
 import { Pagination } from "@/components/seller/pagination";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { Button, buttonStyles } from "@/components/ui/button";
+import { inputStyles } from "@/components/ui/form-field";
 
 const FILTERABLE_STATUSES: OrderStatus[] = [
   "SUBMITTED",
@@ -91,79 +95,75 @@ export default async function SellerOrdersPage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        {canCreate && (
-          <Link
-            href="/seller/orders/new"
-            className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-          >
-            {t("newOrder")}
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title={t("title")}
+        action={
+          canCreate ? (
+            <Link href="/seller/orders/new" className={buttonStyles("primary")}>
+              {t("newOrder")}
+            </Link>
+          ) : undefined
+        }
+      />
 
-      <form method="GET" className="flex flex-col gap-2 sm:flex-row">
-        <label className="sr-only" htmlFor="orders-search">
-          {t("searchPlaceholder")}
-        </label>
-        <input
-          id="orders-search"
-          type="search"
-          name="q"
-          defaultValue={q ?? ""}
-          placeholder={t("searchPlaceholder")}
-          className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
-        />
-        <label className="sr-only" htmlFor="orders-status">
-          {t("filterStatusAll")}
-        </label>
-        <select
-          id="orders-status"
-          name="status"
-          defaultValue={statusFilter ?? ""}
-          className="rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700"
-        >
-          <option value="">{t("filterStatusAll")}</option>
-          {filterableStatuses.map((s) => (
-            <option key={s} value={s}>
-              {tStatus(s)}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-        >
-          {t("search")}
-        </button>
-      </form>
+      <Card accentBorder className="p-3">
+        <form method="GET" className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="sr-only" htmlFor="orders-search">
+            {t("searchPlaceholder")}
+          </label>
+          <input
+            id="orders-search"
+            type="search"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder={t("searchPlaceholder")}
+            className={`flex-1 ${inputStyles}`}
+          />
+          <label className="sr-only" htmlFor="orders-status">
+            {t("filterStatusAll")}
+          </label>
+          <select
+            id="orders-status"
+            name="status"
+            defaultValue={statusFilter ?? ""}
+            className={`${inputStyles} sm:w-auto`}
+          >
+            <option value="">{t("filterStatusAll")}</option>
+            {filterableStatuses.map((s) => (
+              <option key={s} value={s}>
+                {tStatus(s)}
+              </option>
+            ))}
+          </select>
+          <Button type="submit">{t("search")}</Button>
+        </form>
+      </Card>
 
       {orders.length === 0 ? (
-        <p className="rounded border border-dashed border-zinc-300 p-8 text-center text-zinc-500 dark:border-zinc-700">
+        <p className="rounded-control border border-dashed border-border p-8 text-center text-muted-foreground">
           {t("empty")}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
+        <Card accentBorder className="overflow-x-auto p-0">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 dark:bg-zinc-900">
+            <thead className="bg-muted">
               <tr>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnNumber")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnCustomer")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnDate")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnStatus")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnTotal")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   <span className="sr-only">{t("viewDetail")}</span>
                 </th>
               </tr>
@@ -173,16 +173,19 @@ export default async function SellerOrdersPage({
                 const totals = computeOrderTotals(toLineInputs(order.lines));
                 const date = order.submittedAt ?? order.createdAt;
                 return (
-                  <tr key={order.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                    <td className="px-4 py-2">{order.orderNumber}</td>
-                    <td className="px-4 py-2">{order.customer.name}</td>
-                    <td className="px-4 py-2">{date.toLocaleDateString()}</td>
+                  <tr key={order.id} className="border-t border-border">
+                    <td className="px-4 py-2 text-foreground">{order.orderNumber}</td>
+                    <td className="px-4 py-2 text-foreground">{order.customer.name}</td>
+                    <td className="px-4 py-2 text-foreground">{date.toLocaleDateString()}</td>
                     <td className="px-4 py-2">
                       <OrderStatusBadge status={order.status} label={tStatus(order.status)} />
                     </td>
-                    <td className="px-4 py-2">{totals.total.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-foreground">{totals.total.toFixed(2)}</td>
                     <td className="px-4 py-2">
-                      <Link href={`/seller/orders/${order.id}`} className="text-sm underline underline-offset-2">
+                      <Link
+                        href={`/seller/orders/${order.id}`}
+                        className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+                      >
                         {t("viewDetail")}
                       </Link>
                     </td>
@@ -191,7 +194,7 @@ export default async function SellerOrdersPage({
               })}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       <Pagination

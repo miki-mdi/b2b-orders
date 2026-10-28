@@ -4,6 +4,7 @@ const VARIANT_STYLES = {
   primary: "bg-primary text-primary-foreground hover:bg-primary-hover",
   secondary: "border border-border bg-surface text-foreground hover:bg-muted",
   danger: "bg-danger text-danger-foreground hover:opacity-90",
+  "danger-outline": "border border-danger text-danger hover:bg-danger/10",
   ghost: "text-foreground hover:bg-muted",
 } as const;
 
@@ -14,6 +15,16 @@ const SIZE_STYLES = {
 
 export type ButtonVariant = keyof typeof VARIANT_STYLES;
 export type ButtonSize = keyof typeof SIZE_STYLES;
+
+/**
+ * The exact class string Button applies to its own <button>, exported so a
+ * element that must stay a real link (e.g. a primary-styled <Link>
+ * navigating to a route, where a <button> would be the wrong element) can
+ * look identical without duplicating the Tailwind classes.
+ */
+export function buttonStyles(variant: ButtonVariant = "primary", size: ButtonSize = "md", className = "") {
+  return `inline-flex items-center justify-center gap-2 rounded-control font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${VARIANT_STYLES[variant]} ${SIZE_STYLES[size]} ${className}`;
+}
 
 /**
  * Plain presentational button - no "use client" here, so it stays usable
@@ -28,10 +39,5 @@ export function Button({
   className = "",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant; size?: ButtonSize }) {
-  return (
-    <button
-      className={`inline-flex items-center justify-center gap-2 rounded-control font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${VARIANT_STYLES[variant]} ${SIZE_STYLES[size]} ${className}`}
-      {...props}
-    />
-  );
+  return <button className={buttonStyles(variant, size, className)} {...props} />;
 }

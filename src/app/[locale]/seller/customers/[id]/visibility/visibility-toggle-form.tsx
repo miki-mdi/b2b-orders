@@ -15,14 +15,17 @@ export function VisibilityToggleForm({
   unhideLabel: string;
 }) {
   const [state, formAction, isPending] = useActionState(action, initialFormState);
+  const buttonClassName = isHidden
+    ? "text-sm font-medium text-primary underline-offset-2 hover:underline disabled:opacity-60"
+    : "text-sm text-danger hover:underline disabled:opacity-60";
 
   return (
     <form action={formAction} className="inline-flex items-center gap-2">
-      <button type="submit" disabled={isPending} className="text-sm underline underline-offset-2 disabled:opacity-60">
+      <button type="submit" disabled={isPending} className={buttonClassName}>
         {isHidden ? unhideLabel : hideLabel}
       </button>
       {state.status === "error" && (
-        <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <span role="alert" className="text-xs text-danger">
           {state.message}
         </span>
       )}

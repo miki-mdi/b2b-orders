@@ -87,6 +87,25 @@ enum ActingContext {
   PLATFORM_ADMIN
 }
 
+// Lifecycle of a cross-seller trading relationship (see
+// docs/SESSION_HANDOFF.md's cross-seller relationship design note). PENDING
+// and DECLINED/REVOKED only ever exist on TradingRelationship - never on
+// CustomerMembership, which stays an active-access-only record (see that
+// model's own comment).
+enum RelationshipStatus {
+  PENDING
+  ACTIVE
+  DECLINED
+  REVOKED
+}
+
+// Which side sent the invitation/request that created (or re-created, on
+// re-invitation) a TradingRelationship row.
+enum RelationshipInitiator {
+  SELLER
+  BUYER
+}
+
 // ---------------------------------------------------------------------------
 // Identity
 // ---------------------------------------------------------------------------
@@ -111,6 +130,7 @@ model User {
   auditLogEntries     AuditLogEntry[]
   sessions            Session[]
   accounts            Account[]
+  tradingRelationships TradingRelationship[]
 }
 
 // A Seller-side access grant: this User can act as `role` within `tenant`.
@@ -159,6 +179,63 @@ model CustomerMembership {
 
   @@unique([userId, customerId])
   @@index([tenantId, customerId, isActive])
+}
+
+// The invitation/handshake for a cross-seller trading relationship between
+// one buyer User and one seller Tenant - Phase 1 (schema/RLS foundation
+// only, see docs/SESSION_HANDOFF.md's cross-seller relationship design
+// note). Deliberately a SEPARATE table from CustomerMembership rather than
+// an extension of it: CustomerMembership keeps its existing, unchanged
+// meaning everywhere it's already read today - "active, accepted buyer
+// access to one Customer" - so every existing query/report/join that
+// assumes a CustomerMembership row means real, working access stays
+// correct with zero auditing needed. All PENDING/DECLINED/REVOKED
+// bookkeeping lives here instead.
+//
+// customerId is nullable because a buyer-initiated request has no Customer
+// yet - only the seller can create one (see createCustomerInTx in
+// customer-service.ts), which happens as part of the seller's acceptance.
+// A seller-initiated invite, by contrast, sets customerId immediately since
+// the seller already controls that record.
+//
+// initiatedByUserId/respondedByUserId/revokedByUserId are deliberately
+// plain, unrelated String columns (no @relation), matching the snapshot
+// style already used for AuditLogEntry.actorUserId's sibling fields in this
+// schema - this is Phase 1 schema/RLS foundation only, no UI reads these
+// yet, and Users are never hard-deleted in this app (only deactivated), so
+// FK enforcement here is not load-bearing. userId/tenantId/customerId DO
+// get real relations, since those three are the actual isolation/cascade
+// dimensions RLS and cleanup depend on.
+//
+// @@unique([userId, tenantId]) - one relationship (any status) per buyer
+// per seller. On re-invitation after DECLINED/REVOKED, application code
+// must reuse this same row (transition it back to PENDING) rather than
+// attempt a second insert, which this constraint would reject.
+model TradingRelationship {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String
+  customerId String?
+
+  status      RelationshipStatus    @default(PENDING)
+  initiatedBy RelationshipInitiator
+
+  initiatedByUserId String
+  respondedByUserId String?
+  respondedAt       DateTime?
+  revokedByUserId   String?
+  revokedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, tenantId])
+  @@index([tenantId, status])
+  @@index([userId, status])
 }
 
 // Auth.js database-session models (Prisma adapter's expected shape).
@@ -227,6 +304,7 @@ model Tenant {
   deliveryRoutes      DeliveryRoute[]
   orders              Order[]
   auditLogEntries     AuditLogEntry[]
+  tradingRelationships TradingRelationship[]
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +501,7 @@ model Customer {
   productVisibilities        CustomerProductVisibility[]
   favoriteLists               FavoriteList[]
   orders                      Order[]
+  tradingRelationships        TradingRelationship[]
 
   @@unique([tenantId, code])
   @@index([tenantId])

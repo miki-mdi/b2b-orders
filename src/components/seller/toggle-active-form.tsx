@@ -14,21 +14,26 @@ export function ToggleActiveForm({
   isActive,
   deactivateLabel,
   reactivateLabel,
+  tone = "default",
 }: {
   action: (prevState: FormState, formData: FormData) => Promise<FormState>;
   isActive: boolean;
   deactivateLabel: string;
   reactivateLabel: string;
+  /** "danger" is an opt-in, discreet warning-colored look for the deactivate
+   * state - default stays the plain underlined text every existing
+   * consumer (category/unit/productUnit list pages) already renders. */
+  tone?: "default" | "danger";
 }) {
   const [state, formAction, isPending] = useActionState(action, initialFormState);
+  const buttonClassName =
+    tone === "danger" && isActive
+      ? "text-sm text-danger hover:underline disabled:opacity-60"
+      : "text-sm underline underline-offset-2 disabled:opacity-60";
 
   return (
     <form action={formAction} className="inline-flex items-center gap-2">
-      <button
-        type="submit"
-        disabled={isPending}
-        className="text-sm underline underline-offset-2 disabled:opacity-60"
-      >
+      <button type="submit" disabled={isPending} className={buttonClassName}>
         {isActive ? deactivateLabel : reactivateLabel}
       </button>
       {state.status === "error" && (

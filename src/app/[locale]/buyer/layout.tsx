@@ -1,7 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { requireBuyerSession } from "@/lib/auth/require-buyer";
-import { Link } from "@/i18n/navigation";
-import { CartBadge } from "@/components/buyer/cart-badge";
+import { BuyerHeader } from "./buyer-header";
 
 export default async function BuyerLayout({ children }: { children: React.ReactNode }) {
   // Redirects away if this isn't an active buyer (CUSTOMER) session - see
@@ -10,32 +9,28 @@ export default async function BuyerLayout({ children }: { children: React.ReactN
   // re-checking, and a seller-admin session is never shown these routes.
   await requireBuyerSession();
   const t = await getTranslations("buyer.nav");
+  // "home" namespace deliberately reused - see seller/layout.tsx's identical comment.
+  const tHome = await getTranslations("home");
 
   return (
-    <div className="flex min-h-full flex-1 flex-col md:flex-row">
-      <nav
-        aria-label={t("title")}
-        className="flex shrink-0 flex-row gap-1 overflow-x-auto border-b border-zinc-200 p-3 md:w-56 md:flex-col md:border-b-0 md:border-r dark:border-zinc-800"
-      >
-        <p className="hidden px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 md:block">{t("title")}</p>
-        <Link href="/buyer/catalog" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("catalog")}
-        </Link>
-        <Link href="/buyer/cart" className="flex items-center rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("cart")}
-          <CartBadge />
-        </Link>
-        <Link href="/buyer/orders" className="rounded px-2 py-1.5 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800">
-          {t("orders")}
-        </Link>
-        <Link
-          href="/"
-          className="rounded px-2 py-1.5 text-sm text-zinc-500 hover:bg-zinc-100 md:mt-auto dark:hover:bg-zinc-800"
-        >
-          {t("backToSite")}
-        </Link>
-      </nav>
-      <main className="flex-1 p-4 md:p-8">{children}</main>
+    <div className="flex min-h-full flex-1 flex-col">
+      {/* BuyerHeader replaced the old sidebar nav - see buyer-header.tsx. */}
+      <BuyerHeader
+        navAriaLabel={t("title")}
+        moduleLabel={t("moduleBadge")}
+        catalogLabel={t("catalog")}
+        cartLabel={t("cart")}
+        ordersLabel={t("orders")}
+        sellersLabel={t("sellers")}
+        connectionsLabel={t("connections")}
+        backToSiteLabel={t("backToSite")}
+        signOutLabel={tHome("signOut")}
+        menuLabel={t("menu")}
+      />
+      {/* min-w-0 defensively prevents a wide child (e.g. the catalog's
+          product grid) from forcing `main` wider than the viewport - same
+          fix already applied to seller/layout.tsx for the same reason. */}
+      <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
     </div>
   );
 }

@@ -10,6 +10,10 @@ import {
 import { clampPage } from "@/lib/pagination";
 import { Link } from "@/i18n/navigation";
 import { Pagination } from "@/components/seller/pagination";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { Button, buttonStyles } from "@/components/ui/button";
+import { inputStyles } from "@/components/ui/form-field";
 
 type AuditSearchParams = {
   dateFrom?: string;
@@ -77,144 +81,143 @@ export default async function SellerAuditLogPage({ searchParams }: { searchParam
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">{t("intro")}</p>
-      </div>
+      <PageHeader title={t("title")} subtitle={t("intro")} />
 
-      <form method="GET" className="flex flex-wrap items-end gap-3 rounded border border-zinc-200 p-3 dark:border-zinc-800">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="dateFrom" className="text-xs font-medium text-zinc-500">
-            {t("filterDateFrom")}
-          </label>
-          <input
-            id="dateFrom"
-            type="date"
-            name="dateFrom"
-            defaultValue={params.dateFrom ?? ""}
-            className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="dateTo" className="text-xs font-medium text-zinc-500">
-            {t("filterDateTo")}
-          </label>
-          <input
-            id="dateTo"
-            type="date"
-            name="dateTo"
-            defaultValue={params.dateTo ?? ""}
-            className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="actorUserId" className="text-xs font-medium text-zinc-500">
-            {t("filterActor")}
-          </label>
-          <select
-            id="actorUserId"
-            name="actorUserId"
-            defaultValue={params.actorUserId ?? ""}
-            className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700"
-          >
-            <option value="">{t("filterActorAll")}</option>
-            {actors.map((actor) => (
-              <option key={actor.id} value={actor.id}>
-                {actor.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="entityType" className="text-xs font-medium text-zinc-500">
-            {t("filterEntityType")}
-          </label>
-          <select
-            id="entityType"
-            name="entityType"
-            defaultValue={params.entityType ?? ""}
-            className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700"
-          >
-            <option value="">{t("filterEntityTypeAll")}</option>
-            {facets.entityTypes.map((entityType) => (
-              <option key={entityType} value={entityType}>
-                {entityType}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="action" className="text-xs font-medium text-zinc-500">
-            {t("filterAction")}
-          </label>
-          <select
-            id="action"
-            name="action"
-            defaultValue={params.action ?? ""}
-            className="rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700"
-          >
-            <option value="">{t("filterActionAll")}</option>
-            {facets.actions.map((action) => (
-              <option key={action} value={action}>
-                {action}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button type="submit" className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black">
-          {t("apply")}
-        </button>
-        <Link href="/seller/audit" className="text-sm underline underline-offset-2">
-          {t("reset")}
-        </Link>
-      </form>
+      <Card accentBorder className="p-3">
+        <form method="GET" className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="dateFrom" className="text-xs font-medium text-muted-foreground">
+              {t("filterDateFrom")}
+            </label>
+            <input
+              id="dateFrom"
+              type="date"
+              name="dateFrom"
+              defaultValue={params.dateFrom ?? ""}
+              className={`${inputStyles} w-auto`}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="dateTo" className="text-xs font-medium text-muted-foreground">
+              {t("filterDateTo")}
+            </label>
+            <input
+              id="dateTo"
+              type="date"
+              name="dateTo"
+              defaultValue={params.dateTo ?? ""}
+              className={`${inputStyles} w-auto`}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="actorUserId" className="text-xs font-medium text-muted-foreground">
+              {t("filterActor")}
+            </label>
+            <select
+              id="actorUserId"
+              name="actorUserId"
+              defaultValue={params.actorUserId ?? ""}
+              className={`${inputStyles} w-auto`}
+            >
+              <option value="">{t("filterActorAll")}</option>
+              {actors.map((actor) => (
+                <option key={actor.id} value={actor.id}>
+                  {actor.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="entityType" className="text-xs font-medium text-muted-foreground">
+              {t("filterEntityType")}
+            </label>
+            <select
+              id="entityType"
+              name="entityType"
+              defaultValue={params.entityType ?? ""}
+              className={`${inputStyles} w-auto`}
+            >
+              <option value="">{t("filterEntityTypeAll")}</option>
+              {facets.entityTypes.map((entityType) => (
+                <option key={entityType} value={entityType}>
+                  {entityType}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="action" className="text-xs font-medium text-muted-foreground">
+              {t("filterAction")}
+            </label>
+            <select
+              id="action"
+              name="action"
+              defaultValue={params.action ?? ""}
+              className={`${inputStyles} w-auto`}
+            >
+              <option value="">{t("filterActionAll")}</option>
+              {facets.actions.map((action) => (
+                <option key={action} value={action}>
+                  {action}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit">{t("apply")}</Button>
+          <Link href="/seller/audit" className={buttonStyles("ghost")}>
+            {t("reset")}
+          </Link>
+        </form>
+      </Card>
 
       {result.entries.length === 0 ? (
-        <p className="rounded border border-dashed border-zinc-300 p-8 text-center text-zinc-500 dark:border-zinc-700">{t("empty")}</p>
+        <Card accentBorder className="border-dashed p-8 text-center text-muted-foreground">
+          {t("empty")}
+        </Card>
       ) : (
-        <div className="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
+        <Card accentBorder className="overflow-x-auto p-0">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 dark:bg-zinc-900">
+            <thead className="bg-muted">
               <tr>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnDate")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnActor")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnContext")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnEntity")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnAction")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnField")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnChange")}
                 </th>
-                <th scope="col" className="px-4 py-2 font-medium">
+                <th scope="col" className="px-4 py-2 font-medium text-foreground">
                   {t("columnReason")}
                 </th>
               </tr>
             </thead>
             <tbody>
               {result.entries.map((entry) => (
-                <tr key={entry.id} className="border-t border-zinc-200 align-top dark:border-zinc-800">
-                  <td className="whitespace-nowrap px-4 py-2">{entry.createdAt.toLocaleString(locale)}</td>
-                  <td className="px-4 py-2">{entry.actorName ?? t("systemActor")}</td>
-                  <td className="px-4 py-2">{entry.actingContext}</td>
+                <tr key={entry.id} className="border-t border-border align-top">
+                  <td className="whitespace-nowrap px-4 py-2 text-foreground">{entry.createdAt.toLocaleString(locale)}</td>
+                  <td className="px-4 py-2 text-foreground">{entry.actorName ?? t("systemActor")}</td>
+                  <td className="px-4 py-2 text-foreground">{entry.actingContext}</td>
                   <td className="px-4 py-2">
-                    <div>{entry.entityType}</div>
-                    {entry.entityReference && <div className="text-xs text-zinc-500">{entry.entityReference}</div>}
+                    <div className="text-foreground">{entry.entityType}</div>
+                    {entry.entityReference && <div className="text-xs text-muted-foreground">{entry.entityReference}</div>}
                   </td>
-                  <td className="px-4 py-2">{entry.action}</td>
-                  <td className="px-4 py-2">{entry.fieldName ?? "—"}</td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 text-foreground">{entry.action}</td>
+                  <td className="px-4 py-2 text-foreground">{entry.fieldName ?? "—"}</td>
+                  <td className="px-4 py-2 text-foreground">
                     {entry.oldValue || entry.newValue ? (
                       <span>
                         {truncateForDisplay(entry.oldValue) ?? "—"} → {truncateForDisplay(entry.newValue) ?? "—"}
@@ -223,12 +226,12 @@ export default async function SellerAuditLogPage({ searchParams }: { searchParam
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-2">{entry.reason ?? "—"}</td>
+                  <td className="px-4 py-2 text-foreground">{entry.reason ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       <Pagination

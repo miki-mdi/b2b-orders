@@ -2,6 +2,9 @@ import { getTranslations } from "next-intl/server";
 import { requireSellerSession } from "@/lib/auth/require-seller";
 import { requireSellerCapability } from "@/lib/auth/permissions";
 import { Link } from "@/i18n/navigation";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { buttonStyles } from "@/components/ui/button";
 import { PriceListForm } from "../price-list-form";
 import { createPriceListAction } from "../actions";
 
@@ -13,13 +16,15 @@ export default async function NewPriceListPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <Link href="/seller/price-lists" className="text-sm underline underline-offset-2">
+      <div className="flex flex-col items-start gap-2">
+        <Link href="/seller/price-lists" className={buttonStyles("ghost")}>
           {tCommon("backToList")}
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{t("newTitle")}</h1>
+        <PageHeader title={t("newTitle")} />
       </div>
-      <PriceListForm action={createPriceListAction} />
+      <Card accentBorder className="max-w-4xl p-6">
+        <PriceListForm action={createPriceListAction} />
+      </Card>
     </div>
   );
 }

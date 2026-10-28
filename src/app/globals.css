@@ -19,6 +19,12 @@
   --muted: #f4f4f5;
   --muted-foreground: #71717a;
 
+  /* Editable-control boundary only (inputs/selects/textareas via
+     inputStyles) - deliberately a separate token from --border so
+     Card/table hairlines are untouched. Blue-grey rather than plain grey
+     so it reads as "editable" without looking like a danger/error state. */
+  --input-border: #94a3b8;
+
   --focus-ring: #3b82f6;
 
   --success: #16a34a;
@@ -45,6 +51,7 @@
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-input-border: var(--input-border);
 
   --color-focus-ring: var(--focus-ring);
 
@@ -62,10 +69,39 @@
   /* Modern, reliable system font stack - no network font, no new package. */
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Custom breakpoint (generates the `nav:` variant), used ONLY by
+     seller-header.tsx/buyer-header.tsx to switch between the hamburger
+     panel and the full single-row desktop nav. Tailwind's own `md`
+     (768px) was measured to be far too narrow for that row's actual
+     content (logo + nav links/More + theme/language controls + Back to
+     site + Sign out) - DOM measurement at full width found a true
+     min-content floor of ~1278px for SellerHeader (the wider of the two;
+     BuyerHeader's floor is ~1195px), confirmed empirically as real
+     document-level horizontal overflow from ~768px up to ~1270px with
+     Tailwind's default `md`/`lg`/`xl` breakpoints. 1360px keeps a ~80px
+     safety margin above that measured floor (scrollbar width, font
+     metrics) while still turning the full desktop nav on at common
+     laptop widths (1366px and up) rather than only at `2xl` (1536px). */
+  --breakpoint-nav: 1360px;
 }
 
+/*
+ * Dark values live in two places on purpose, so BOTH system preference and
+ * an explicit manual choice (src/components/theme-toggle.tsx) work:
+ *
+ *  - The @media block applies whenever the OS prefers dark AND there is no
+ *    manual override - `:not([data-theme="light"])` is what lets a manual
+ *    "light" choice turn this block off even when the OS is in dark mode.
+ *  - The plain `[data-theme="dark"]` rule applies a manual "dark" choice
+ *    regardless of OS preference.
+ *
+ * No manual choice ever written -> data-theme is never set -> only the
+ * @media block can apply -> pure system-preference behavior, unchanged
+ * from before this file had a toggle at all.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0a0a0a;
     --foreground: #ededed;
 
@@ -77,6 +113,7 @@
     --border: #27272a;
     --muted: #27272a;
     --muted-foreground: #a1a1aa;
+    --input-border: #64748b;
 
     --focus-ring: #60a5fa;
 
@@ -84,6 +121,27 @@
     --warning: #f59e0b;
     --danger: #ef4444;
   }
+}
+
+:root[data-theme="dark"] {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+
+  --primary: #2563eb;
+  --primary-hover: #3b82f6;
+  --primary-foreground: #ffffff;
+
+  --surface: #18181b;
+  --border: #27272a;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --input-border: #64748b;
+
+  --focus-ring: #60a5fa;
+
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
 }
 
 body {

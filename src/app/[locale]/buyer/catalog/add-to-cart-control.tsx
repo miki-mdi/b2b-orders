@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useCart } from "@/lib/cart/use-cart";
+import { Button } from "@/components/ui/button";
+import { inputStyles } from "@/components/ui/form-field";
 
 export function AddToCartControl({
   productUnitId,
@@ -19,7 +21,7 @@ export function AddToCartControl({
   const [added, setAdded] = useState(false);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <label className="sr-only" htmlFor={`qty-${productUnitId}`}>
         {t("quantityLabel")}
       </label>
@@ -33,19 +35,19 @@ export function AddToCartControl({
           setQty(Number(event.target.value));
           setAdded(false);
         }}
-        className="w-20 rounded border border-zinc-300 px-2 py-1.5 text-sm dark:border-zinc-700"
+        className={`w-20 shrink-0 ${inputStyles}`}
       />
-      <button
+      <Button
         type="button"
+        className="flex-1 whitespace-nowrap"
         onClick={() => {
           if (!Number.isFinite(qty) || qty <= 0) return;
           addItem(productUnitId, qty);
           setAdded(true);
         }}
-        className="flex-1 rounded bg-black px-3 py-1.5 text-sm font-medium text-white dark:bg-white dark:text-black"
       >
         {added ? t("added") : t("addToCart")}
-      </button>
+      </Button>
     </div>
   );
 }

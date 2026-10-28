@@ -14,11 +14,11 @@ export function DeleteItemForm({
 
   return (
     <form action={formAction} className="inline-flex items-center gap-2">
-      <button type="submit" disabled={isPending} className="text-sm text-red-600 underline underline-offset-2 disabled:opacity-60 dark:text-red-400">
+      <button type="submit" disabled={isPending} className="text-sm text-danger hover:underline disabled:opacity-60">
         {label}
       </button>
       {state.status === "error" && (
-        <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <span role="alert" className="text-xs text-danger">
           {state.message}
         </span>
       )}

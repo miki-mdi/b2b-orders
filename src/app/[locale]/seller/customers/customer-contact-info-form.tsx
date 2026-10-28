@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { useTranslations } from "next-intl";
-import { FieldError } from "@/components/forms/field-error";
-import { SubmitButton } from "@/components/forms/submit-button";
+import { FormField, inputStyles } from "@/components/ui/form-field";
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { initialFormState, type FormState } from "@/lib/forms/form-state";
 import type { Customer } from "@prisma/client";
 
@@ -28,75 +29,62 @@ export function CustomerContactInfoForm({
   const tCommon = useTranslations("seller.common");
 
   return (
-    <form action={formAction} className="flex max-w-xl flex-col gap-4" noValidate>
-      <p className="rounded border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400">
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
+      <p className="rounded-control border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
         {t("limitedEditNotice")}
       </p>
 
-      {state.status === "error" && state.message && !state.fieldErrors && (
-        <p role="alert" className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-          {state.message}
-        </p>
-      )}
+      {state.status === "error" && state.message && !state.fieldErrors && <Alert tone="danger">{state.message}</Alert>}
 
-      <div className="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
         <div>
-          <span className="block font-medium text-zinc-500">{t("name")}</span>
-          <p>{customer.name}</p>
+          <span className="block font-medium text-muted-foreground">{t("name")}</span>
+          <p className="text-foreground">{customer.name}</p>
         </div>
         <div>
-          <span className="block font-medium text-zinc-500">{t("code")}</span>
-          <p className="font-mono">{customer.code ?? "—"}</p>
+          <span className="block font-medium text-muted-foreground">{t("code")}</span>
+          <p className="font-mono text-foreground">{customer.code ?? "—"}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="contactEmail" className="block text-sm font-medium">
-            {t("contactEmail")}
-          </label>
+        <FormField label={t("contactEmail")} htmlFor="contactEmail" error={state.fieldErrors?.contactEmail}>
           <input
             id="contactEmail"
             name="contactEmail"
             type="email"
             defaultValue={customer.contactEmail ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.contactEmail)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <FieldError message={state.fieldErrors?.contactEmail} />
-        </div>
-        <div>
-          <label htmlFor="contactPhone" className="block text-sm font-medium">
-            {t("contactPhone")}
-          </label>
+        </FormField>
+
+        <FormField label={t("contactPhone")} htmlFor="contactPhone" error={state.fieldErrors?.contactPhone}>
           <input
             id="contactPhone"
             name="contactPhone"
             defaultValue={customer.contactPhone ?? ""}
             aria-invalid={Boolean(state.fieldErrors?.contactPhone)}
-            className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+            className={inputStyles}
           />
-          <FieldError message={state.fieldErrors?.contactPhone} />
-        </div>
+        </FormField>
       </div>
 
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium">
-          {t("notes")}
-        </label>
+      <FormField label={t("notes")} htmlFor="notes" error={state.fieldErrors?.notes}>
         <textarea
           id="notes"
           name="notes"
           defaultValue={customer.notes ?? ""}
           rows={3}
           aria-invalid={Boolean(state.fieldErrors?.notes)}
-          className="mt-1 w-full rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700"
+          className={inputStyles}
         />
-        <FieldError message={state.fieldErrors?.notes} />
-      </div>
+      </FormField>
 
       <div>
-        <SubmitButton pending={isPending}>{tCommon("save")}</SubmitButton>
+        <Button type="submit" disabled={isPending} aria-busy={isPending}>
+          {isPending ? "…" : tCommon("save")}
+        </Button>
       </div>
     </form>
   );

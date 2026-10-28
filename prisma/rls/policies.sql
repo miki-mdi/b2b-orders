@@ -102,6 +102,50 @@ CREATE POLICY tenant_isolation_delete ON "TenantMembership"
   FOR DELETE
   USING ("tenantId" = current_setting('app.current_tenant_id', true));
 
+-- TradingRelationship (Phase 1 of the cross-seller relationship feature,
+-- see docs/SESSION_HANDOFF.md's design note): the invitation/handshake
+-- between one buyer User and one seller Tenant. Shaped exactly like
+-- TenantMembership above - tenant-scoped writes, plus the same read-only
+-- "userId = app.current_user_id" self-row exemption so a buyer can
+-- discover ALL their own relationships (PENDING/ACTIVE/DECLINED/REVOKED,
+-- across every tenant) before any tenant context is known, the same
+-- login-discovery need TenantMembership/CustomerMembership already solve
+-- this way. No customerId-based narrowing is needed here (unlike
+-- CustomerMembership) - userId alone already scopes a buyer to their own
+-- rows, and customerId on this table is just an optional payload field,
+-- not an isolation dimension.
+ALTER TABLE "TradingRelationship" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "TradingRelationship" FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation_select ON "TradingRelationship"
+  FOR SELECT
+  USING (
+    "tenantId" = current_setting('app.current_tenant_id', true)
+    OR "userId" = NULLIF(current_setting('app.current_user_id', true), '')
+  );
+
+-- Write: tenant match only, same reasoning as TenantMembership/
+-- CustomerMembership above - a user's own identity is never sufficient to
+-- create/modify/delete a relationship row by itself. A buyer-initiated
+-- request still satisfies this: the application deliberately opens a
+-- transaction scoped to the TARGET seller's tenantId (chosen from the
+-- public, non-RLS'd Tenant table) before inserting, exactly the same
+-- "app chooses the scope, RLS enforces it was honored" trust model every
+-- other write in this codebase already uses - see
+-- src/lib/db/with-tenant.ts's withTenantContext.
+CREATE POLICY tenant_isolation_insert ON "TradingRelationship"
+  FOR INSERT
+  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY tenant_isolation_update ON "TradingRelationship"
+  FOR UPDATE
+  USING ("tenantId" = current_setting('app.current_tenant_id', true))
+  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true));
+
+CREATE POLICY tenant_isolation_delete ON "TradingRelationship"
+  FOR DELETE
+  USING ("tenantId" = current_setting('app.current_tenant_id', true));
+
 ALTER TABLE "Category" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Category" FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON "Category"

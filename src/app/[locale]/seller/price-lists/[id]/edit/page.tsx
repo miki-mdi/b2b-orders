@@ -4,6 +4,9 @@ import { Link } from "@/i18n/navigation";
 import { requireSellerSession } from "@/lib/auth/require-seller";
 import { requireSellerCapability, hasCapability } from "@/lib/auth/permissions";
 import { getPriceList } from "@/lib/domain/pricing/price-list-service";
+import { PageHeader } from "@/components/ui/page-header";
+import { Card } from "@/components/ui/card";
+import { buttonStyles } from "@/components/ui/button";
 import { PriceListForm } from "../../price-list-form";
 import { updatePriceListAction } from "../../actions";
 import { deletePriceListItemAction } from "../items/actions";
@@ -22,52 +25,63 @@ export default async function EditPriceListPage({ params }: { params: Promise<{ 
   if (!priceList) {
     notFound();
   }
+  // PriceListForm is a Client Component - pass only its own editable fields,
+  // never the full getPriceList() result (its items/productUnit/product
+  // carry Prisma Decimal values, which aren't a plain object RSC can send
+  // across the server/client boundary).
+  const priceListFormValues = {
+    name: priceList.name,
+    code: priceList.code,
+    description: priceList.description,
+    currency: priceList.currency,
+    isDefault: priceList.isDefault,
+    isActive: priceList.isActive,
+  };
 
   return (
-    <div className="flex max-w-3xl flex-col gap-10">
+    <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-4">
-        <div>
-          <Link href="/seller/price-lists" className="text-sm underline underline-offset-2">
+        <div className="flex flex-col items-start gap-2">
+          <Link href="/seller/price-lists" className={buttonStyles("ghost")}>
             {tCommon("backToList")}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold">{canWrite ? t("editTitle") : t("viewTitle")}</h1>
+          <PageHeader title={canWrite ? t("editTitle") : t("viewTitle")} />
         </div>
-        <PriceListForm action={updatePriceListAction.bind(null, id)} priceList={priceList} readOnly={!canWrite} />
+        <Card accentBorder className="max-w-4xl p-6">
+          <PriceListForm action={updatePriceListAction.bind(null, id)} priceList={priceListFormValues} readOnly={!canWrite} />
+        </Card>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold">{tItems("title")}</h2>
+      <Card accentBorder className="flex max-w-4xl flex-col gap-4 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-foreground">{tItems("title")}</h2>
           {canWrite && (
-            <Link
-              href={`/seller/price-lists/${id}/items/new`}
-              className="rounded bg-black px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-            >
+            <Link href={`/seller/price-lists/${id}/items/new`} className={buttonStyles("primary")}>
               {tCommon("addNew")}
             </Link>
           )}
         </div>
 
         {priceList.items.length === 0 ? (
-          <p className="rounded border border-dashed border-zinc-300 p-8 text-center text-zinc-500 dark:border-zinc-700">
+          <p className="rounded-control border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
             {tItems("empty")}
           </p>
         ) : (
-          <div className="overflow-x-auto rounded border border-zinc-200 dark:border-zinc-800">
+          <div className="overflow-x-auto rounded-control border border-border">
             <table className="w-full text-left text-sm">
-              <thead className="bg-zinc-50 dark:bg-zinc-900">
+              <thead className="bg-muted">
                 <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tItems("columnProduct")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tItems("columnUnit")}
                   </th>
-                  <th scope="col" className="px-4 py-2 font-medium">
+                  <th scope="col" className="px-4 py-2 font-medium text-foreground">
                     {tItems("columnPrice")}
                   </th>
                   {canWrite && (
-                    <th scope="col" className="px-4 py-2 font-medium">
+                    <th scope="col" className="px-4 py-2 font-medium text-foreground">
                       {tCommon("actions")}
                     </th>
                   )}
@@ -75,12 +89,12 @@ export default async function EditPriceListPage({ params }: { params: Promise<{ 
               </thead>
               <tbody>
                 {priceList.items.map((item) => (
-                  <tr key={item.id} className="border-t border-zinc-200 dark:border-zinc-800">
-                    <td className="px-4 py-2">{item.productUnit.product.nameEn}</td>
-                    <td className="px-4 py-2">
+                  <tr key={item.id} className="border-t border-border">
+                    <td className="px-4 py-2 text-foreground">{item.productUnit.product.nameEn}</td>
+                    <td className="px-4 py-2 text-foreground">
                       {item.productUnit.label} ({item.productUnit.unitOfMeasure.labelEn})
                     </td>
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2 text-foreground">
                       {item.price.toString()} {priceList.currency}
                     </td>
                     {canWrite && (
@@ -88,7 +102,7 @@ export default async function EditPriceListPage({ params }: { params: Promise<{ 
                         <div className="flex items-center gap-3">
                           <Link
                             href={`/seller/price-lists/${id}/items/${item.id}/edit`}
-                            className="text-sm underline underline-offset-2"
+                            className="text-sm font-medium text-primary underline-offset-2 hover:underline"
                           >
                             {tCommon("edit")}
                           </Link>
@@ -105,7 +119,7 @@ export default async function EditPriceListPage({ params }: { params: Promise<{ 
             </table>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
