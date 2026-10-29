@@ -103,23 +103,23 @@ export default async function HomePage() {
 
   const t = await getTranslations("home");
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center gap-8 p-4 sm:p-8">
+    <div className="relative isolate flex min-h-screen flex-1 flex-col items-center justify-center gap-10 bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--color-primary)_12%,transparent),transparent_65%)] px-4 py-24 sm:px-8">
       <div className="absolute right-4 top-4 sm:right-8 sm:top-8">
         <LanguageThemeControls />
       </div>
 
-      <AppLogo size="lg" />
+      <div className="px-4 py-5 sm:px-10"><AppLogo size="lg" /></div>
 
       <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-3xl font-semibold text-foreground">{t("entryHeadline")}</h1>
-        <p className="max-w-md text-muted-foreground">{t("entrySubtitle")}</p>
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">{t("entryHeadline")}</h1>
+        <p className="max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">{t("entrySubtitle")}</p>
       </div>
 
-      <div className="grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid w-full max-w-3xl grid-cols-1 gap-5 sm:grid-cols-2">
         <Link href="/sign-in">
           <Card
             accentBorder
-            className="flex h-full flex-col items-center gap-3 p-6 text-center transition-colors hover:bg-muted"
+            className="flex h-full flex-col items-center gap-4 rounded-2xl p-8 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:bg-muted hover:shadow-lg motion-reduce:transform-none"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
               <BuyerIcon className="h-7 w-7" />
@@ -132,7 +132,7 @@ export default async function HomePage() {
         <Link href="/sign-in">
           <Card
             accentBorder
-            className="flex h-full flex-col items-center gap-3 p-6 text-center transition-colors hover:bg-muted"
+            className="flex h-full flex-col items-center gap-4 rounded-2xl p-8 text-center shadow-sm transition-all hover:-translate-y-1 hover:border-primary/40 hover:bg-muted hover:shadow-lg motion-reduce:transform-none"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
               <SellerIcon className="h-7 w-7" />

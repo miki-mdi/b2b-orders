@@ -8,8 +8,10 @@ import { routing } from "@/i18n/routing";
 import "../globals.css";
 
 export const metadata: Metadata = {
-  title: "B2B Orders",
-  description: "Multi-tenant B2B ordering platform",
+  title: "Venordo",
+  applicationName: "Venordo",
+  icons: { icon: "/brand/venordo-icon.png", apple: "/brand/venordo-icon.png" },
+  description: "Venordo — B2B Ordering Platform",
 };
 
 export function generateStaticParams() {
